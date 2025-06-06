@@ -1,6 +1,6 @@
 import * as neffos from 'neffos.js';
 
-const WS_BASE_URL = 'ws://set-fx.com/ws/dolar';
+const WS_BASE_URL = 'wss://set-fx.com/ws/dolar';
 
 class WebSocketService {
     constructor() {
