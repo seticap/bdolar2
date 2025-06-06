@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 
-const TOKEN_URL = "http://set-fx.com/api/v1/auth/access/token/";
+const TOKEN_URL = "https://set-fx.com/api/v1/auth/access/token/";
 
 export const getToken = async (username, password) => {
     try {
