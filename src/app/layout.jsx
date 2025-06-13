@@ -1,7 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-// import AppSiderbar from "@/components/AppSiderbar";
-import LandingPage from "./page";
 import { WebSocketDataProvider } from "@/componentServer/WebSocketDataContext";
 
 const geistSans = Geist({
@@ -23,10 +21,9 @@ export default function RootLayout({ children }) {
   return (
     <WebSocketDataProvider>
     <html lang="es" suppressHydrationWarning>
-      <body>
-        {/* <AppSiderbar /> */}
-        <main className="w-full  text-white ">
-          <LandingPage />
+      <body className="min-h-screen flex flex-col bg-">
+        <main className="flex-1 w-full  text-white ">
+          {children}
         </main>
       </body>
     </html>
