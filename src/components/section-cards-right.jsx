@@ -1,14 +1,10 @@
 "use client";
 import {
   Card,
-  CardAction,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { GraficoInteractivo } from "./GraficoInteractivo";
 import { BellIcon, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -18,12 +14,14 @@ const GraficoInteractivo1 = dynamic(() => import("./GraficoInteractivo"), {
 });
 export function SectionCardsRight() {
   return (
-    <div className="grid grid-cols-1 gap-4 lg:px-1 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-      {/* grafico montos */}
-      <GraficoInteractivo1 />
+    <div className="grid grid-cols-1 gap-4 px-4 sm:px-30 md:px-30 lg:px-0 @xl/main:px-10 @5xl/main:px-12 @sm:grid-cols-2 @lg:grid-cols-3 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+      {/* Gráfico interactivo - Ocupa todo el ancho en móvil, luego se ajusta */}
+      <div className="@sm:col-span-2 @lg:col-span-1 @xl/main:col-span-2 @5xl/main:col-span-1">
+        <GraficoInteractivo1 />
+      </div>
 
       {/* cuadro ultimas transacciones */}
-      <Card className="w-[300px] h-60 text-white bg-custom-colortwo border-none p-4">
+      <Card className="w-full max-w-full @sm:w-auto h-60 text-white bg-custom-colortwo border-none p-4">
         <CardHeader className="p-0 mb-[-30]">
           <CardTitle className="text-lg font-semibold">
             Últimas Transacciones
@@ -64,9 +62,8 @@ export function SectionCardsRight() {
         </CardContent>
       </Card>
 
-
       {/* Notificaciones */}
-      <Card className="w-[300px] h-58 text-white bg-custom-colortwo border-none p-4">
+      <Card className="w-full max-w-full @sm:w-auto h-62 text-white bg-custom-colortwo border-none p-4">
         <CardHeader className="p-0 flex items-center gap-2">
           <BellIcon className="h-4 w-4 text-yellow-400" />
           <CardTitle className="text-lg font-semibold">
