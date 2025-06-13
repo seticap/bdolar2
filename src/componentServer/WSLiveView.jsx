@@ -20,10 +20,25 @@ const WSLiveView = () => {
   const mountSeriesRef = useRef(null);
   const inicioLineRef = useRef(null);
 
-  //Estados
+  // Estados
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
   const [lastUpdateLabel, setLastUpdateLabel] = useState("");
+  const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
   const isMounted = useRef(true);
+
+  // Detección de dispositivo mejorada
+  useEffect(() => {
+    const checkDevice = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 768);
+      setIsTablet(width >= 768 && width < 1024);
+    };
+
+    checkDevice();
+    window.addEventListener("resize", checkDevice);
+    return () => window.removeEventListener("resize", checkDevice);
+  }, []);
 
   // Inicialización del gráfico
   useEffect(() => {
@@ -41,6 +56,16 @@ const WSLiveView = () => {
         },
         crosshair: {
           mode: CrosshairMode.Normal,
+          vertLine: {
+            color: "rgba(200, 200, 200, 0.5)",
+            width: 1,
+            style: LineStyle.Dashed,
+          },
+          horzLine: {
+            color: "rgba(200, 200, 200, 0.5)",
+            width: 1,
+            style: LineStyle.Dashed,
+          },
         },
         timeScale: {
           rightOffset: 0,
@@ -50,7 +75,7 @@ const WSLiveView = () => {
           rightBarStaysOnScroll: false,
           borderVisible: false,
           timeVisible: true,
-          secondsVisible: true, // Mostrar segundos en el eje de tiempo
+          secondsVisible: true,
           tickMarkFormatter: (time, tickIndex) => {
             const date = new Date(time * 1000);
             const hours = date.getUTCHours().toString().padStart(2, "0");
@@ -58,9 +83,12 @@ const WSLiveView = () => {
             return `${hours}:${minutes}`;
           },
         },
-        width: chartContainerRef.current.clientWidth,
-        hight: 500,
-
+        width: isMobile
+          ? window.innerWidth - 40
+          : isTablet
+          ? window.innerWidth * 0.9
+          : 1100,
+        height: isMobile ? 400 : isTablet ? 500 : 705,
         leftPriceScale: {
           visible: true,
           scaleMargins: {
@@ -68,21 +96,23 @@ const WSLiveView = () => {
             bottom: 0.1,
           },
         },
-
         rightPriceScale: {
           visible: false,
           scaleMargins: {
-            top: 0.9, // ⬅ Control del tamaño
+            top: 0.9,
             bottom: 0,
           },
+        },
+        localization: {
+          priceFormatter: (price) => price.toFixed(2),
         },
       });
 
       priceSeriesRef.current = chart.addSeries(BaselineSeries, {
-        topLineColor: "rgba(34, 139, 34, 1)", // ForestGreen (verde oscuro)
+        topLineColor: "rgba(34, 139, 34, 1)",
         topFillColor1: "rgba(34, 139, 34, 0.25)",
         topFillColor2: "rgba(34, 139, 34, 0.05)",
-        bottomLineColor: "rgba(165, 42, 42, 1)", // Brown (rojo oscuro)
+        bottomLineColor: "rgba(165, 42, 42, 1)",
         bottomFillColor1: "rgba(165, 42, 42, 0.05)",
         bottomFillColor2: "rgba(165, 42, 42, 0.25)",
         lineWidth: 2,
@@ -97,49 +127,13 @@ const WSLiveView = () => {
         priceScaleId: "right",
       });
 
-      // chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
-      //   const range = chart.timeScale().getVisibleRange();
-      //   if (range) {
-      //     console.log("🔍 Rango visible en el eje X:");
-      //     console.log("From:", range.from);
-      //     console.log("To:", range.to);
-      //     console.log(chart);
-
-      //   }
-      // });
-
-      //setVisibleRange
-      {
-        /*chart.timeScale().setVisibleRange({
-        from: 1716561600, // Ejemplo: "2024-05-25 08:00:00" (en UNIX timestamp)
-        to: 1716572400, // Ejemplo: "2024-05-25 11:00:00"
-      }); */
-      }
-
-      //getVisibleLogicalRange
-      {
-        /*const logicalRange = chart.timeScale().getVisibleLogicalRange();
-      console.log(logicalRange); */
-      } // { from: 50.5, to: 200.5 }
-
-      //setVisibleLogicalRange
-      {
-        /* chart.timeScale().setVisibleLogicalRange({ from: 10, to: 100 }); */
-      }
-
-      //suscribeVisibleLogicalRange
-      {
-        /* chart.timeScale().subscribeVisibleTimeRangeChange((newRange) => {
-        console.log("Nuevo rango visible:", newRange);
-      }); */
-      }
-
       chartRef.current = chart;
 
+      // Tooltip para el crosshair
       const tooltip = document.createElement("div");
       tooltip.style.position = "absolute";
       tooltip.style.zIndex = "1000";
-      tooltip.style.background = "red";
+      tooltip.style.background = "black";
       tooltip.style.color = "#fff";
       tooltip.style.padding = "6px 10px";
       tooltip.style.borderRadius = "4px";
@@ -147,6 +141,7 @@ const WSLiveView = () => {
       tooltip.style.fontSize = "12px";
       tooltip.style.pointerEvents = "none";
       tooltip.style.transition = "all 0.1s ease";
+      tooltip.style.border = "1px solid rgba(255, 255, 255, 0.1)";
       chartContainerRef.current.appendChild(tooltip);
 
       chart.subscribeCrosshairMove((param) => {
@@ -159,45 +154,73 @@ const WSLiveView = () => {
         const mount = param.seriesData.get(mountSeriesRef.current)?.value;
 
         if (price !== undefined || mount !== undefined) {
+          const date = new Date(param.time * 1000);
+          const timeStr = date.toISOString().substr(11, 8);
+
           tooltip.innerHTML = `
-          ${
-            price !== undefined
-              ? `<div><strong>Precio :</strong> ${price}</div>`
-              : ""
-          }
-          ${
-            mount !== undefined
-              ? `<div><strong>Montos :</strong> ${mount}</div>`
-              : ""
-          }
+            <div><strong>Hora:</strong> ${timeStr}</div>
+            ${
+              price !== undefined
+                ? `<div><strong>Precio:</strong> ${price.toFixed(2)}</div>`
+                : ""
+            }
+            ${
+              mount !== undefined
+                ? `<div><strong>Montos:</strong> ${mount.toFixed(2)}</div>`
+                : ""
+            }
           `;
 
           tooltip.style.display = "block";
-          tooltip.style.left = param.point.x + 10 + "px";
-          tooltip.style.top = param.point.y + 30 + "px";
+          tooltip.style.left = `${Math.min(
+            param.point.x + 10,
+            window.innerWidth - 150
+          )}px`;
+          tooltip.style.top = `${param.point.y + 30}px`;
         }
       });
 
+      const handleResize = () => {
+        if (
+          chartRef.current &&
+          chartContainerRef.current &&
+          isMounted.current
+        ) {
+          chartRef.current.applyOptions({
+            width: isMobile
+              ? window.innerWidth - 40
+              : isTablet
+              ? window.innerWidth * 0.9
+              : chartContainerRef.current.clientWidth,
+            height: isMobile
+              ? 400
+              : isTablet
+              ? 500
+              : chartContainerRef.current.clientHeight,
+          });
+        }
+      };
+
+      window.addEventListener("resize", handleResize);
+
       return () => {
         isMounted.current = false;
-        if (chartRef.current && !chartRef.current._internal_isDestroyed) {
+        window.removeEventListener("resize", handleResize);
+        if (chartRef.current) {
           try {
-            if (!chartRef.current._internal_isDestroyed) {
-              chartRef.current = null;
-            }
+            chartRef.current.remove();
           } catch (error) {
             console.warn("Error durante la limpieza del gráfico:", error);
           }
-          chartRef.current.remove();
           chartRef.current = null;
           priceSeriesRef.current = null;
           mountSeriesRef.current = null;
         }
       };
     }
-  }, []);
+  }, [isMobile, isTablet]);
 
-  //--------------------------- Manejo de WebSocket -----------------------------------//
+  // Manejo de WebSocket
   useEffect(() => {
     const token =
       TokenService.getToken() || localStorage.getItem("token-socket");
@@ -252,7 +275,7 @@ const WSLiveView = () => {
             if (minLength > 0 && isMounted.current) {
               updateChart(validPrices, validAmounts, validLabels);
               setLastUpdateTime(Date.now());
-              setLastUpdateLabel(validLabels[validLabels.length - 1]); // Guardar la última etiqueta
+              setLastUpdateLabel(validLabels[validLabels.length - 1]);
             }
           }
         } else if (parsed.id !== 1000) {
@@ -275,14 +298,12 @@ const WSLiveView = () => {
       !isMounted.current ||
       !chartRef.current ||
       !priceSeriesRef.current ||
-      !mountSeriesRef.current ||
-      chartRef.current._internal_isDestroyed
+      !mountSeriesRef.current
     ) {
       return;
     }
 
     try {
-      // Convertir HH:MM:SS a segundos desde inicio del día
       const dataWithTimestamps = labels
         .map((timeStr, i) => {
           const [hours, minutes, seconds] = timeStr.split(":").map(Number);
@@ -312,7 +333,6 @@ const WSLiveView = () => {
         }
       }
 
-      // Preparar datos para el gráfico
       const priceData = uniqueData.map((item) => ({
         time: item.time,
         value: item.price,
@@ -323,42 +343,34 @@ const WSLiveView = () => {
         value: item.amount,
       }));
 
-      if (isMounted.current && priceData.length > 0 && mountData.length > 0) {
+      if (priceData.length > 0 && mountData.length > 0) {
         priceSeriesRef.current.setData(priceData);
         mountSeriesRef.current.setData(mountData);
 
         chartRef.current.timeScale().fitContent();
 
-        chartRef.current.timeScale().applyOptions({
-          lockVisibleTimeRangeOnResize: true,
-        });
-
         const totalBars = priceData.length;
         chartRef.current.timeScale().applyOptions({
-          minVisibleBarCount: 5, // Zoom máximo (puedes ajustar este valor)
-          maxVisibleBarCount: totalBars, // Zoom mínimo (no se puede alejar más allá del gráfico completo)
+          minVisibleBarCount: 5,
+          maxVisibleBarCount: totalBars,
         });
 
         if (inicioLineRef.current) {
           priceSeriesRef.current.removePriceLine(inicioLineRef.current);
         }
 
-        //Agregar linea que representa el primer valor
         const firstValue = priceData[0]?.value;
 
         if (firstValue !== undefined) {
           inicioLineRef.current = priceSeriesRef.current.createPriceLine({
             price: firstValue,
-            color: "lightgray",
+            color: "rgba(200, 200, 200, 0.7)",
             lineWidth: 1,
-            LineStyle: LineStyle.Dashed,
+            lineStyle: LineStyle.Dashed,
             axisLabelVisible: true,
-            affectsScale: true,
+            title: "Inicio",
           });
-        }
 
-        // Actualizar dinámicamente el baseValue con el primer valor recibido
-        if (firstValue !== undefined) {
           priceSeriesRef.current.applyOptions({
             baseValue: { type: "price", price: firstValue },
           });
@@ -370,21 +382,31 @@ const WSLiveView = () => {
   };
 
   return (
-    <>
+    <div
+      style={{
+        width: "100%",
+        padding: isMobile ? "0 20px" : isTablet ? "0 40px" : "0",
+        boxSizing: "border-box",
+        display: "flex",
+        justifyContent: "center",
+      }}
+    >
       <div
         ref={chartContainerRef}
         style={{
-          width: "120vh",
-          height: "680px",
-          minHeight: "680px",
+          width: isTablet ? "90%" : "100%",
+          height: isMobile ? "50vh" : isTablet ? "60vh" : "73vh",
+          minHeight: "400px",
+          maxWidth: "1100px",
           display: "block",
           position: "relative",
           overflow: "hidden",
           borderRadius: "5px",
           marginTop: "20px",
+          backgroundColor: "#202026",
         }}
       />
-    </>
+    </div>
   );
 };
 
