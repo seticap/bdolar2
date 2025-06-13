@@ -1,120 +1,89 @@
 "use client";
 
-import { LogOut, Settings, User } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Button } from "./ui/button";
-
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-
 import { LoginForm } from "./login-form";
 import { SigninForm } from "./Sigin-form";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "./ui/dialog";
+import MobileMenuToggle from "./MobileMenuToggle"; // ícono ☰ / ✕
 
 const Navbar = () => {
+  const [openMenu, setOpenMenu] = useState(false);
+
   return (
-    <nav className="p-1 flex items-center justify-between bg-custom-colortwo">
-      {/* LEFT */}
+    <nav className="flex items-center justify-between p-2 bg-custom-colortwo text-white z-50">
+      {/* Top: Logo y botón de menú */}
       <Link href="/">
         <img src="logoSet.png" alt="logo" className="max-w-40 max-h-40" />
       </Link>
-      {/* collapseButton */}
-      {/* RIGHT */}
-      <div className="flex items-center gap-4">
-        <Button variant="link">
-          <Link href="/" className="">
-            SET-FX
-          </Link>
-        </Button>
 
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="link" className="cursor-pointer">
-              REGISTRARSE
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl">
-            <DialogTitle>
-              {/* Registrarse */}
-              </DialogTitle>
-            <SigninForm />
-          </DialogContent>
-        </Dialog>
+      <div className="flex-grow flex justify-end items-center gap-4">
+        <MobileMenuToggle
+          open={openMenu}
+          toggle={() => setOpenMenu((prev) => !prev)}
+        />
 
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="link" className="cursor-pointer">
-              INICIAR SESIÓN
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl">
-            <DialogTitle>
-              {/* Iniciar Sesión */}
-            </DialogTitle>
-            <LoginForm />
-          </DialogContent>
-        </Dialog>
+        {/* Menú único: comportamiento depende del viewport + openMenu */}
+        <div
+          className={`
+          flex flex-col sm:flex-row gap-4 text-white font-semibold uppercase tracking-wide transition-all duration-300
+          ${
+            openMenu
+              ? "fixed inset-0 bg-custom-colortwo z-40 items-center justify-center text-xl"
+              : "hidden"
+          }
+          sm:flex sm:static sm:justify-end sm:items-center sm:text-sm sm:bg-transparent sm:shadow-none
+          `}
+        >
+          <Button
+            variant="link"
+            className="text-left w-full sm:w-auto"
+            onClick={() => setOpenMenu(false)}
+          >
+            <a href="https://set-icap.com/set-icap-fx/acerca-de/">SET-FX</a>
+          </Button>
 
-        <Button variant="link">
-          <Link href="/" className="">
-            EPAYCO
-          </Link>
-        </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                variant="link"
+                className="w-full sm:w-auto"
+                onClick={() => setOpenMenu(false)}
+              >
+                REGISTRARSE
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl">
+              <DialogTitle>Registro</DialogTitle>
+              <SigninForm />
+            </DialogContent>
+          </Dialog>
 
-        {/* THEME MENU */}
-        {/* <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon">
-              <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">Toggle theme</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setTheme("light")}>
-              Light
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("dark")}>
-              Dark
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("system")}>
-              System
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu> */}
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                variant="link"
+                className="w-full sm:w-auto"
+                onClick={() => setOpenMenu(false)}
+              >
+                INICIAR SESIÓN
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl">
+              <DialogTitle>Iniciar Sesión</DialogTitle>
+              <LoginForm />
+            </DialogContent>
+          </Dialog>
 
-        {/* USER MENU */}
-        {/* <Avatar>
-          <AvatarImage src="https://avatars.githubusercontent.com/u/1486366" />
-          <AvatarFallback>CN</AvatarFallback>
-        </Avatar> */}
-
-        {/* <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon">
-                <SquareMenu/>
-                <span className="sr-only" >Open Menu</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Billing</DropdownMenuItem>
-            <DropdownMenuItem>Team</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu> */}
+          <Button
+            variant="link"
+            className="text-left w-full sm:w-auto"
+            onClick={() => setOpenMenu(false)}
+          >
+            <Link href="/">EPAYCO</Link>
+          </Button>
+        </div>
       </div>
     </nav>
   );
