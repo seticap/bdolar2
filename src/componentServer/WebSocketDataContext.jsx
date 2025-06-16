@@ -20,7 +20,7 @@ useEffect(() => {
     setHistorico({});
   }
 
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = 20;
 
 const fetchAndConnect = async () => {
   const attempts = parseInt(sessionStorage.getItem("token-attempts") || "0");
