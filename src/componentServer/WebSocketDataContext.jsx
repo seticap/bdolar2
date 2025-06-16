@@ -1,9 +1,10 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import websocketService from "@/services/websocketdelay";
+import TokenService from "@/services/TokenService";
 
 const WebSocketDataContext = createContext();
-
 export const useWebSocketData = () => useContext(WebSocketDataContext);
 
 export const WebSocketDataProvider = ({ children }) => {
@@ -17,6 +18,46 @@ export const WebSocketDataProvider = ({ children }) => {
     } catch {
       setHistorico({});
     }
+
+    const fetchAndConnect = async () => {
+      const existingToken = localStorage.getItem("auth-token");
+
+      if (!existingToken) {
+        const alreadyReloaded = sessionStorage.getItem("token-reload");
+
+        if (!alreadyReloaded) {
+          console.warn("⚠️ No hay token, recargando una vez...");
+          sessionStorage.setItem("token-reload", "true");
+          window.location.reload();
+          return;
+        } else {
+          console.error(
+            "❌ No se encontró token tras recarga. Verifica generación."
+          );
+          return;
+        }
+      }
+
+      try {
+        const username = "sysdev";
+        const password = "$MasterDev1972*";
+
+        const token = await TokenService.fetchToken(username, password);
+        localStorage.setItem("auth-token", token);
+        //console.log("✅ Token generado automáticamente:", token);
+
+        await websocketService.connect(token);
+
+        websocketService.addListener((data) => {
+          if (!data || !data.id || !data.data) return;
+          updateData(data.id, data);
+        });
+      } catch (err) {
+        console.error("❌ Error generando token o conectando WebSocket:", err);
+      }
+    };
+
+    fetchAndConnect();
   }, []);
 
   const updateData = (id, payload) => {
@@ -35,16 +76,15 @@ export const WebSocketDataProvider = ({ children }) => {
   const saveAsYesterdayIfNeeded = (id, newData) => {
     const today = new Date().toISOString().slice(0, 10);
     const lastSaveDate = localStorage.getItem(`fecha-${id}`);
-
     const current = JSON.stringify(newData);
+
     localStorage.setItem(`hoy-${id}`, current);
 
     if (lastSaveDate && lastSaveDate !== today && current) {
-      localStorage.setItem(`ayer-${id}`, current); // almacena la version anterior
+      localStorage.setItem(`ayer-${id}`, current);
     }
 
     localStorage.setItem(`fecha-${id}`, today);
-    localStorage.setItem(`hoy-${id}`, JSON.stringify(newData));
   };
 
   const guardarPorHora = (id, data) => {
@@ -54,9 +94,9 @@ export const WebSocketDataProvider = ({ children }) => {
     const clave = `historico-${id}`;
     const fechaClave = `historico-fecha-${id}`;
     const hoy = new Date().toISOString().slice(0, 10);
-
     const ultimaFecha = localStorage.getItem(fechaClave);
-    if (ultimaFecha && ultimaFecha != hoy) {
+
+    if (ultimaFecha && ultimaFecha !== hoy) {
       localStorage.removeItem(clave);
     }
 
@@ -71,7 +111,7 @@ export const WebSocketDataProvider = ({ children }) => {
         time: data.timem,
       };
       localStorage.setItem(clave, JSON.stringify(parsed));
-      setHisotrico({ ...parsed });
+      setHistorico({ ...parsed });
     }
   };
 
