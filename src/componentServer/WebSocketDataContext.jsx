@@ -20,20 +20,24 @@ export const WebSocketDataProvider = ({ children }) => {
     }
 
     const fetchAndConnect = async () => {
-      const alreadyReloaded = sessionStorage.getItem("alreadyReloaded");
+      let token = localStorage.getItem("auth-token");
 
-      const existingToken = localStorage.getItem("auth-token");
-      if (!existingToken) {
-        if (!alreadyReloaded) {
-          sessionStorage.setItem("alreadyReloaded", "true");
-          console.warn("⚠️ No hay token, recargando por primera vez...");
-          window.location.reload();
-          return;
-        } else {
-          console.error("⚠️ Token aún no disponible tras recarga. Detenido.");
+      if (!token) {
+        console.warn("⚠️ Token no disponible. Generando uno nuevo...");
+
+        const username = "sysdev";
+        const password = "$MasterDev1972*";
+
+        try {
+          token = await TokenService.fetchToken(username, password);
+          localStorage.setItem("auth-token", token);
+          console.log("✅ Nuevo token generado:", token);
+        } catch (error) {
+          console.error("❌ Error generando nuevo token:", error);
           return;
         }
       }
+      
 
       try {
         const username = "sysdev";
@@ -118,4 +122,4 @@ export const WebSocketDataProvider = ({ children }) => {
       {children}
     </WebSocketDataContext.Provider>
   );
-};
+};  
