@@ -12,75 +12,67 @@ export const WebSocketDataProvider = ({ children }) => {
   const [dataById, setDataById] = useState({});
   const [historico, setHistorico] = useState({});
 
-  useEffect(() => {
-    const raw = localStorage.getItem("historico-1007");
-    try {
-      setHistorico(raw ? JSON.parse(raw) : {});
-    } catch {
-      setHistorico({});
+useEffect(() => {
+  const raw = localStorage.getItem("historico-1007");
+  try {
+    setHistorico(raw ? JSON.parse(raw) : {});
+  } catch {
+    setHistorico({});
+  }
+
+  const fetchAndConnect = async () => {
+    // 1. BORRAR token si existe (para regenerarlo limpio SIEMPRE)
+    if (localStorage.getItem("auth-token")) {
+      console.warn("🔁 Token existente encontrado. Eliminando para regenerar limpio.");
+      localStorage.removeItem("auth-token");
     }
 
-    const fetchAndConnect = async () => {
-      let token = localStorage.getItem("auth-token");
+    // 2. Generar SIEMPRE un nuevo token
+    const username = "sysdev";
+    const password = "$MasterDev1972*";
+    let token;
 
-      if (!token) {
-        console.warn("⚠️ Token no disponible. Generando uno nuevo...");
+    try {
+      token = await TokenService.fetchToken(username, password);
+      localStorage.setItem("auth-token", token);
+      console.log("✅ Token nuevo generado:", token);
+    } catch (error) {
+      console.error("❌ Error al generar nuevo token:", error);
+      return;
+    }
 
-        const username = "sysdev";
-        const password = "$MasterDev1972*";
+    // 3. Intentar conectar con WebSocket
+    try {
+      await websocketService.connect(token);
 
-        try {
-          token = await TokenService.fetchToken(username, password);
-          localStorage.setItem("auth-token", token);
-          console.log("✅ Nuevo token generado:", token);
-        } catch (error) {
-          console.error("❌ Error generando nuevo token:", error);
-          return;
+      websocketService.addListener((data) => {
+        if (!data || !data.id || !data.data) return;
+        updateData(data.id, data);
+      });
+    } catch (err) {
+      console.error("❌ Error conectando WebSocket:", err);
+
+      // 4. Si fue error de autenticación: eliminar token y recargar solo una vez
+      if (
+        err instanceof Event ||
+        err.message?.includes("Authentication failed")
+      ) {
+        console.warn("⚠️ Token inválido. Eliminando y recargando...");
+        localStorage.removeItem("auth-token");
+
+        if (!sessionStorage.getItem("reloaded-after-auth-error")) {
+          sessionStorage.setItem("reloaded-after-auth-error", "true");
+          window.location.reload();
+        } else {
+          console.error("❌ Recarga ya intentada. Deteniendo para evitar bucle.");
         }
       }
-      
+    }
+  };
 
-      try {
-        const username = "sysdev";
-        const password = "$MasterDev1972*";
+  fetchAndConnect();
+}, []);
 
-        const token = await TokenService.fetchToken(username, password);
-        localStorage.setItem("auth-token", token);
-
-        //console.log("✅ Token generado automáticamente:", token);
-        await websocketService.connect(token);
-
-        websocketService.addListener((data) => {
-          if (!data || !data.id || !data.data) return;
-          updateData(data.id, data);
-        });
-      } catch (err) {
-        console.error("❌ Error generando token o conectando WebSocket:", err);
-
-        if (
-          err instanceof Event ||
-          err.message?.includes("Authentication failed")
-        ) {
-          console.warn(
-            "⚠️ Token inválido o expirado. Eliminando y recargando..."
-          );
-          localStorage.removeItem("auth-token");
-
-          // Recargar solo una vez
-          if (!sessionStorage.getItem("reloaded-after-auth-error")) {
-            sessionStorage.setItem("reloaded-after-auth-error", "true");
-            window.location.reload();
-          } else {
-            console.error(
-              "❌ Token sigue fallando tras recarga. Deteniendo para evitar bucle."
-            );
-          }
-        }
-      }
-    };
-
-    fetchAndConnect();
-  }, []);
   
 
   const updateData = (id, payload) => {
