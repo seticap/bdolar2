@@ -20,55 +20,41 @@ useEffect(() => {
     setHistorico({});
   }
 
-  const fetchAndConnect = async () => {
-    // 1. BORRAR token si existe (para regenerarlo limpio SIEMPRE)
-    if (localStorage.getItem("auth-token")) {
-      console.warn("🔁 Token existente encontrado. Eliminando para regenerar limpio.");
-      localStorage.removeItem("auth-token");
-    }
+const MAX_ATTEMPTS = 3;
 
-    // 2. Generar SIEMPRE un nuevo token
+const fetchAndConnect = async () => {
+  const attempts = parseInt(sessionStorage.getItem("token-attempts") || "0");
+
+  if (attempts >= MAX_ATTEMPTS) {
+    console.error("❌ Intentos máximos alcanzados. No se pudo recuperar token.");
+    return;
+  }
+
+  try {
     const username = "sysdev";
     const password = "$MasterDev1972*";
-    let token;
 
-    try {
-      token = await TokenService.fetchToken(username, password);
-      localStorage.setItem("auth-token", token);
-      console.log("✅ Token nuevo generado:", token);
-    } catch (error) {
-      console.error("❌ Error al generar nuevo token:", error);
-      return;
-    }
+    const token = await TokenService.fetchToken(username, password);
+    if (!token) throw new Error("Token vacío");
 
-    // 3. Intentar conectar con WebSocket
-    try {
-      await websocketService.connect(token);
+    localStorage.setItem("auth-token", token);
+    sessionStorage.setItem("token-attempts", "0"); // Reset intentos
 
-      websocketService.addListener((data) => {
-        if (!data || !data.id || !data.data) return;
-        updateData(data.id, data);
-      });
-    } catch (err) {
-      console.error("❌ Error conectando WebSocket:", err);
+    await websocketService.connect(token);
 
-      // 4. Si fue error de autenticación: eliminar token y recargar solo una vez
-      if (
-        err instanceof Event ||
-        err.message?.includes("Authentication failed")
-      ) {
-        console.warn("⚠️ Token inválido. Eliminando y recargando...");
-        localStorage.removeItem("auth-token");
+    websocketService.addListener((data) => {
+      if (!data || !data.id || !data.data) return;
+      updateData(data.id, data);
+    });
+  } catch (err) {
+    console.error("❌ Error generando token o conectando WebSocket:", err);
+    localStorage.removeItem("auth-token");
 
-        if (!sessionStorage.getItem("reloaded-after-auth-error")) {
-          sessionStorage.setItem("reloaded-after-auth-error", "true");
-          window.location.reload();
-        } else {
-          console.error("❌ Recarga ya intentada. Deteniendo para evitar bucle.");
-        }
-      }
-    }
-  };
+    sessionStorage.setItem("token-attempts", (attempts + 1).toString());
+    setTimeout(() => window.location.reload(), 1500); // Retry con retardo
+  }
+};
+
 
   fetchAndConnect();
 }, []);
