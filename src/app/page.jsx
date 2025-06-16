@@ -10,7 +10,6 @@ import PromoPage from "./dashboard/PromoPage";
 import InfoPage from "./information/InfoPage";
 import FooterPage from "@/components/Footer";
 import WSLiveView from "@/componentServer/WSLiveView";
-import TokenTester from "@/componentServer/TokenTester";
 import { useWebSocketData } from "@/componentServer/WebSocketDataContext";
 
 const LandingPage = () => {
@@ -64,7 +63,6 @@ const LandingPage = () => {
             </div>
           </div>
         </div>
-        <TokenTester />
       </div>
       <PromoPage />
       <InfoPage />
