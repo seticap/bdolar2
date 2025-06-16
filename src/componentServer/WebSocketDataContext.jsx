@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
@@ -46,7 +47,7 @@ export const WebSocketDataProvider = ({ children }) => {
         const token = await TokenService.fetchToken(username, password);
         localStorage.setItem("auth-token", token);
 
-        console.log("✅ Token generado automáticamente:", token);
+        //console.log("✅ Token generado automáticamente:", token);
         await websocketService.connect(token);
 
         websocketService.addListener((data) => {
@@ -55,6 +56,26 @@ export const WebSocketDataProvider = ({ children }) => {
         });
       } catch (err) {
         console.error("❌ Error generando token o conectando WebSocket:", err);
+
+        if (
+          err instanceof Event ||
+          err.message?.includes("Authentication failed")
+        ) {
+          console.warn(
+            "⚠️ Token inválido o expirado. Eliminando y recargando..."
+          );
+          localStorage.removeItem("auth-token");
+
+          // Recargar solo una vez
+          if (!sessionStorage.getItem("reloaded-after-auth-error")) {
+            sessionStorage.setItem("reloaded-after-auth-error", "true");
+            window.location.reload();
+          } else {
+            console.error(
+              "❌ Token sigue fallando tras recarga. Deteniendo para evitar bucle."
+            );
+          }
+        }
       }
     };
 
