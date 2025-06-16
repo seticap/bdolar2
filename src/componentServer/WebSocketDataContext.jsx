@@ -20,11 +20,19 @@ export const WebSocketDataProvider = ({ children }) => {
     }
 
     const fetchAndConnect = async () => {
+      const alreadyReloaded = sessionStorage.getItem("alreadyReloaded");
+
       const existingToken = localStorage.getItem("auth-token");
       if (!existingToken) {
-        console.warn("⚠️ No hay token en localStorage, recargando...");
-        window.location.reload();
-        return;
+        if (!alreadyReloaded) {
+          sessionStorage.setItem("alreadyReloaded", "true");
+          console.warn("⚠️ No hay token, recargando por primera vez...");
+          window.location.reload();
+          return;
+        } else {
+          console.error("⚠️ Token aún no disponible tras recarga. Detenido.");
+          return;
+        }
       }
 
       try {
@@ -48,6 +56,7 @@ export const WebSocketDataProvider = ({ children }) => {
 
     fetchAndConnect();
   }, []);
+  
 
   const updateData = (id, payload) => {
     if (id === 1000) return;
