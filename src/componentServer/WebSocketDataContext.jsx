@@ -20,40 +20,53 @@ useEffect(() => {
     setHistorico({});
   }
 
-const MAX_ATTEMPTS = 20;
-
 const fetchAndConnect = async () => {
-  const attempts = parseInt(sessionStorage.getItem("token-attempts") || "0");
-
-  if (attempts >= MAX_ATTEMPTS) {
-    console.error("❌ Intentos máximos alcanzados. No se pudo recuperar token.");
-    return;
-  }
-
   try {
     const username = "sysdev";
     const password = "$MasterDev1972*";
 
-    const token = await TokenService.fetchToken(username, password);
-    if (!token) throw new Error("Token vacío");
+    let token = await TokenService.fetchToken(username, password);
+    if (!token || token.length < 30) {
+      console.warn("⚠️ Token inválido. Reintentando...");
+      token = await TokenService.fetchToken(username, password); // Segundo intento
+    }
 
     localStorage.setItem("auth-token", token);
-    sessionStorage.setItem("token-attempts", "0"); // Reset intentos
+    console.log("✅ Token válido generado:", token);
 
-    await websocketService.connect(token);
+    try {
+      await websocketService.connect(token);
+      websocketService.addListener((data) => {
+        if (!data || !data.id || !data.data) return;
+        updateData(data.id, data);
+      });
+    } catch (wsError) {
+      console.error("❌ WebSocket error:", wsError);
 
-    websocketService.addListener((data) => {
-      if (!data || !data.id || !data.data) return;
-      updateData(data.id, data);
-    });
+      // Si el WebSocket falla, intenta regenerar token y reconectar una vez
+      if (
+        wsError instanceof Event ||
+        wsError.message?.includes("Authentication failed")
+      ) {
+        console.warn("🔁 Token rechazado por WebSocket. Regenerando...");
+
+        localStorage.removeItem("auth-token");
+        const newToken = await TokenService.fetchToken(username, password);
+
+        if (newToken && newToken.length >= 30) {
+          localStorage.setItem("auth-token", newToken);
+          console.log("✅ Segundo token generado:", newToken);
+          await websocketService.connect(newToken);
+        } else {
+          console.error("❌ Falló el segundo intento de generación de token.");
+        }
+      }
+    }
   } catch (err) {
-    console.error("❌ Error generando token o conectando WebSocket:", err);
-    localStorage.removeItem("auth-token");
-
-    sessionStorage.setItem("token-attempts", (attempts + 1).toString());
-    setTimeout(() => window.location.reload(), 1500); // Retry con retardo
+    console.error("❌ Error general en fetchAndConnect:", err);
   }
 };
+
 
 
   fetchAndConnect();
