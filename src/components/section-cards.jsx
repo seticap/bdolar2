@@ -194,7 +194,7 @@ export function SectionCards() {
 
         {/* MONEDAS (PROVISIONAL ANTES DE CAMBIARLO A LA API) */}
         <Card
-          className="w-full max-w-full h-auto sm:h-[200px] mx-auto text-white bg-custom-colortwo border-none 
+          className="w-full max-w-full h-auto sm:h-[140px] mx-auto text-white bg-custom-colortwo border-none 
                 p-3 sm:p-4 md:p-5 lg:p-2"
         >
           <CardHeader className="p-0 mb-[-18]">
