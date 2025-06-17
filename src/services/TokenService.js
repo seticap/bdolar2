@@ -12,7 +12,6 @@ class TokenService {
   }
 
   async fetchToken(username, password) {
-    if (this.token) return this.token;
 
     const { success, token, error } = await getToken(username, password);
     if (success) {
