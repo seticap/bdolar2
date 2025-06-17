@@ -124,8 +124,12 @@ export function SectionCards() {
                 </tbody>
               </table>
             </div>
+          </CardContent>
+        </Card>
 
-            {/* Montos USD y Transacciones */}
+        {/* Montos USD y Transacciones */}
+        <Card className="w-full h-auto @sm:h-[580px] bg-custom-colortwo text-white border-none p-3 @sm:p-4">
+          <CardContent className="p-0 space-y-3 @sm:space-y-4">
             <div className=" mb-2 ">
               <div className="text-sm">
                 <div className="font-medium mb-1">MONTOS USD:</div>
