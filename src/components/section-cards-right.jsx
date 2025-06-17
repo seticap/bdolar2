@@ -14,7 +14,7 @@ const GraficoInteractivo1 = dynamic(() => import("./GraficoInteractivo"), {
 });
 export function SectionCardsRight() {
   return (
-    <div className="grid grid-cols-1 gap-4 px-4 sm:px-30 md:px-30 lg:px-5 @xl/main:px-10 @5xl/main:px-12 @sm:grid-cols-2 @lg:grid-cols-3 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 px-4 sm:px-30 md:px-30 lg:px-5 xl/main:px-10 5xl/main:px-12 sm:grid-cols-2 lg:grid-cols-3 xl/main:grid-cols-2 5xl/main:grid-cols-4">
       {/* Gráfico interactivo - Ocupa todo el ancho en móvil, luego se ajusta */}
       <div className="sm:col-span-2 lg:col-span-1 xl/main:col-span-2 5xl/main:col-span-1">
         <GraficoInteractivo1 />
