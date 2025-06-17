@@ -38,7 +38,7 @@ useEffect(() => {
         }
 
         localStorage.setItem("auth-token", token);
-        console.log("✅ Token generado:", token);
+        //console.log("✅ Token generado:", token);
 
         // 🔗 Conectar WebSocket
         await websocketService.connect(token);
@@ -65,7 +65,7 @@ useEffect(() => {
             );
             if (retryToken && retryToken.length >= 30) {
               localStorage.setItem("auth-token", retryToken);
-              console.log("✅ Segundo token generado:", retryToken);
+              //console.log("✅ Segundo token generado:", retryToken);
               await websocketService.connect(retryToken);
             } else {
               throw new Error("Segundo token inválido");
