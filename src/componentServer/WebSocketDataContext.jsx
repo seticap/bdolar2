@@ -20,53 +20,62 @@ useEffect(() => {
     setHistorico({});
   }
 
-const fetchAndConnect = async () => {
-  try {
-    const username = "sysdev";
-    const password = "$MasterDev1972*";
+    const fetchAndConnect = async () => {
+      const username = "sysdev";
+      const password = "$MasterDev1972*";
 
-    let token = await TokenService.fetchToken(username, password);
-    if (!token || token.length < 30) {
-      console.warn("⚠️ Token inválido. Reintentando...");
-      token = await TokenService.fetchToken(username, password); // Segundo intento
-    }
+      // 🔁 Siempre borrar el token existente antes de iniciar
+      localStorage.removeItem("auth-token");
 
-    localStorage.setItem("auth-token", token);
-    console.log("✅ Token válido generado:", token);
+      let token = null;
 
-    try {
-      await websocketService.connect(token);
-      websocketService.addListener((data) => {
-        if (!data || !data.id || !data.data) return;
-        updateData(data.id, data);
-      });
-    } catch (wsError) {
-      console.error("❌ WebSocket error:", wsError);
+      try {
+        // 🧾 Intentar generar nuevo token
+        token = await TokenService.fetchToken(username, password);
 
-      // Si el WebSocket falla, intenta regenerar token y reconectar una vez
-      if (
-        wsError instanceof Event ||
-        wsError.message?.includes("Authentication failed")
-      ) {
-        console.warn("🔁 Token rechazado por WebSocket. Regenerando...");
+        if (!token || token.length < 30) {
+          throw new Error("Token inválido al primer intento");
+        }
 
-        localStorage.removeItem("auth-token");
-        const newToken = await TokenService.fetchToken(username, password);
+        localStorage.setItem("auth-token", token);
+        console.log("✅ Token generado:", token);
 
-        if (newToken && newToken.length >= 30) {
-          localStorage.setItem("auth-token", newToken);
-          console.log("✅ Segundo token generado:", newToken);
-          await websocketService.connect(newToken);
-        } else {
-          console.error("❌ Falló el segundo intento de generación de token.");
+        // 🔗 Conectar WebSocket
+        await websocketService.connect(token);
+        websocketService.addListener((data) => {
+          if (!data || !data.id || !data.data) return;
+          updateData(data.id, data);
+        });
+      } catch (err) {
+        console.error("❌ Error al generar token o conectar WebSocket:", err);
+
+        // 🚨 Si fue por token inválido o rechazado por WebSocket
+        if (
+          err instanceof Event || // WebSocket error genérico
+          err.message?.includes("Authentication failed") ||
+          err.message?.includes("Token inválido")
+        ) {
+          console.warn("⚠️ Token inválido. Reintentando...");
+
+          try {
+            // 🔁 Generar un segundo token y reconectar
+            const retryToken = await TokenService.fetchToken(
+              username,
+              password
+            );
+            if (retryToken && retryToken.length >= 30) {
+              localStorage.setItem("auth-token", retryToken);
+              console.log("✅ Segundo token generado:", retryToken);
+              await websocketService.connect(retryToken);
+            } else {
+              throw new Error("Segundo token inválido");
+            }
+          } catch (secondError) {
+            console.error("❌ Falló el segundo intento:", secondError);
+          }
         }
       }
-    }
-  } catch (err) {
-    console.error("❌ Error general en fetchAndConnect:", err);
-  }
-};
-
+    };
 
 
   fetchAndConnect();
