@@ -155,8 +155,12 @@ export function SectionCards() {
                 </table>
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            {/* Tabla Actual */}
+        {/* Tabla Actual */}
+        <Card className="w-full h-auto @sm:h-[580px] bg-custom-colortwo text-white border-none p-3 @sm:p-4">
+          <CardContent className="p-0 space-y-3 @sm:space-y-4">
             <div className="overflow-x-auto text-sm">
               <table className="min-w-[280px] w-full">
                 <thead>
