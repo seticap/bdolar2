@@ -20,7 +20,7 @@ const LandingPage = () => {
       <Navbar />
       <div className="h-full bg-backgroundtwo">
         {/* Contenedor Principal con Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 w-full mx-auto p-4">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 w-full  mx-auto p-1 py-6">
           {/* Columna Izquierda (Sección 1) - Ocupa toda la altura en móvil, 1 columna en desktop */}
           <div className="lg:col-span-1 lg:row-span-5 row-span-1">
             <SectionCards />
@@ -29,21 +29,21 @@ const LandingPage = () => {
           {/* Columna Central (Secciones 3 y 4) - Ocupa 3 columnas en desktop */}
           <div className="lg:col-span-3 lg:col-start-2 lg:row-start-1 top-8">
             {/* Sección 3 (Cards de Cierre y Promedio) */}
-             <div className="flex flex-col sm:flex-row justify-center sm:justify-evenly items-center gap-6 sm:gap-16 px-4 ">
-               <Card className="sm:min-w-[270px] w-full sm:w-auto flex-shrink-0 h-28 flex flex-col justify-center items-center text-green-600 bg-custom-colortwo border-none">
-                 <h3 className="text-xl text-white">CIERRE</h3>
-                 <h1 className="text-5xl font-bold tracking-tight">
-                   {promedio.close || "-"}
-                 </h1>
-               </Card>
+            <div className="flex flex-col sm:flex-row justify-center sm:justify-evenly items-center gap-6 sm:gap-16 px-1 ">
+              <Card className=" sm:min-w-[270px] w-full sm:w-auto flex-shrink-0 h-28 flex flex-col justify-start pt-4 items-center text-green-600 bg-custom-colortwo border-none">
+                <h3 className="text-xl text-white">CIERRE</h3>
+                <h1 className="text-5xl font-bold  mt-0 leading-1">
+                  {promedio.close || "-"}
+                </h1>
+              </Card>
 
-               <Card className="sm:min-w-[270px] w-full sm:w-auto flex-shrink-0 h-28 flex flex-col justify-center items-center text-red-600 bg-custom-colortwo border-none">
-                 <h3 className="text-xl text-white">PROMEDIO</h3>
-                 <h1 className="text-5xl font-bold tracking-tight">
-                   {promedio.avg || "-"}
-                 </h1>
-               </Card>
-             </div>
+              <Card className="sm:min-w-[270px] w-full sm:w-auto flex-shrink-0 h-28 flex flex-col justify-start pt-4 items-center text-red-600 bg-custom-colortwo border-none">
+                <h3 className="text-xl text-white">PROMEDIO</h3>
+                <h1 className="text-5xl font-bold  mt-0 leading-1">
+                  {promedio.avg || "-"}
+                </h1>
+              </Card>
+            </div>
 
             {/* Sección 4 (Gráfico) */}
             <div className="lg:row-span-4 ">
