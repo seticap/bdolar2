@@ -44,10 +44,10 @@ export function SectionCards() {
   };
 
   return (
-    <div className="flex flex-col sm:flex-row flex-wrap gap-4 px-6 sm:px-2 w-full max-w-[1400px] mx-auto">
+    <div className="flex flex-col sm:flex-row flex-wrap gap-3 px-6 sm:px-2 w-full max-w-[1400px] mx-auto">
       {/* Tabla de Precios */}
       <Card className="flex-1 min-w-[280px] sm:min-w-[300px] bg-custom-colortwo text-white border-none p-3 sm:p-2">
-        <CardContent className="p-0">
+        <CardContent className="p-0 ">
           <div className="font-bold text-white mb-3 sm:mb-2">PRECIOS</div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[280px]">
@@ -109,17 +109,17 @@ export function SectionCards() {
               <thead>
                 <tr className="border-b border-gray-600">
                   <th className="text-left pb-2 w-3/4"></th>
-                  <th className="text-right pb-2 w-1/4">HOY</th>
+                  <th className="text-center pb-2 w-1/4">HOY</th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  { label: "NEGOCIADO", hoy: montos.sum },
-                  { label: "ULTIMO", hoy: montos.close },
-                  { label: "PROMEDIO", hoy: montos.avg },
-                  { label: "MÁXIMO", hoy: montos.high },
-                  { label: "MÍNIMO", hoy: montos.low },
-                  { label: "TRANSACCIONES", hoy: montos.count },
+                  { label: "NEGOCIADO", hoy: montos.sum || "-" },
+                  { label: "ULTIMO", hoy: montos.close || "-" },
+                  { label: "PROMEDIO", hoy: montos.avg || "-" },
+                  { label: "MÁXIMO", hoy: montos.high || "-" },
+                  { label: "MÍNIMO", hoy: montos.low || "-" },
+                  { label: "TRANSACCIONES", hoy: montos.count || "-" },
                 ].map(({ label, hoy }) => (
                   <tr key={label} className="border-b border-gray-600">
                     <td className="py-1">{label}</td>
@@ -132,27 +132,39 @@ export function SectionCards() {
         </CardContent>
       </Card>
 
-      {/* Tabla Horaria */}
+      {/* Tabla Horaria - Versión Optimizada */}
       <Card className="flex-1 min-w-[280px] sm:min-w-[250px] bg-custom-colortwo text-white border-none p-3 sm:p-2">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[250px]">
+            <table className="w-full text-sm min-w-[250px] max-h-[190px] border-separate border-spacing-y-2 sm:border-spacing-y-1">
               <thead>
-                <tr className="border-b border-gray-600">
-                  <th className="text-center pb-1 w-1/3">HORA</th>
-                  <th className="text-center pb-1 w-1/3">PROMEDIO</th>
-                  <th className="text-center pb-1 w-1/3">CIERRE</th>
+                <tr>
+                  <th className="text-center border-gray-600 border-b px-2 sm:py-4 lg:py-1">
+                    HORA
+                  </th>
+                  <th className="text-center border-gray-600 border-b px-2 py-1">
+                    PROMEDIO
+                  </th>
+                  <th className="text-center border-gray-600 border-b px-2 py-1">
+                    CIERRE
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {["09:00", "10:00", "11:00", "12:00"].map((hora) => (
-                  <tr key={hora} className="border-b border-gray-600">
-                    <td className="text-center py-1">{hora}</td>
-                    <td className="text-center py-1">
-                      {historico[hora] ? `${historico[hora].avg}` : "-"}
+                  <tr key={hora} className="">
+                    <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-2">
+                      {hora}
                     </td>
-                    <td className="text-center py-1">
-                      {historico[hora] ? `${historico[hora].close}` : "-"}
+                    <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-1">
+                      {historico[hora]
+                        ? `${historico[hora].avg}`
+                        : "-"}
+                    </td>
+                    <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-1">
+                      {historico[hora]
+                        ? `${historico[hora].close}`
+                        : "-"}
                     </td>
                   </tr>
                 ))}
@@ -164,7 +176,7 @@ export function SectionCards() {
 
       {/* Monedas */}
       <Card className="flex-1 min-w-[280px] sm:min-w-[200px] bg-custom-colortwo text-white border-none p-3 sm:p-2">
-        <CardContent className="p-0 max-h-[155px] overflow-y-auto scrollbar-custom">
+        <CardContent className="p-0 max-h-[190px] sm:max-h-[220px] lg:max-h-[110px] overflow-y-auto scrollbar-custom">
           <div className="font-bold text-white mb-3 sm:mb-2">MONEDAS</div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[250px]">
@@ -180,6 +192,11 @@ export function SectionCards() {
                   { moneda: "DÓLAR SPOT", valor: "0,9537", cambio: "-0.1160" },
                   { moneda: "DÓLAR OBS", valor: "0,9537", cambio: "-0.1160" },
                   { moneda: "EURO", valor: "5,7042", cambio: "+0.0009" },
+                  { moneda: "PESO COL", valor: "20,2880", cambio: "-0.1160" },
+                  { moneda: "REAL BRL", valor: "152,1680", cambio: "+0.0013" },
+                  { moneda: "PESO ARG", valor: "0,9537", cambio: "+0.0009" },
+                  { moneda: "SOL PERUANO", valor: "5,7042", cambio: "-0.0059" },
+                  { moneda: "PESO MXN", valor: "20,2880", cambio: "+0.0013" },
                   { moneda: "PESO COL", valor: "20,2880", cambio: "-0.1160" },
                   { moneda: "REAL BRL", valor: "152,1680", cambio: "+0.0013" },
                   { moneda: "PESO ARG", valor: "0,9537", cambio: "+0.0009" },
