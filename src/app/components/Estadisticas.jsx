@@ -250,7 +250,7 @@ const transformados = nuevos.map((dato, idx) => ({
 
   console.log(filas)
 return (
- <div className="bg-[#0c0c14] text-white min-h-screen px-4 sm:px-6 py-8">
+ <div className="bg-gradient-to-b from-[#20202c] to-[#1a1a26] text-white min-h-screen px-4 sm:px-6 py-8">
     <h2 className="text-2xl font-bold mb-6 text-center">Estadísticas</h2>
 
     <div className="space-y-6">
