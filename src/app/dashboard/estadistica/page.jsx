@@ -1,6 +1,6 @@
 'use client';
 
-import Footer from '../../components/Footer';
+import Footer2 from '../../components/Footer2';
 import Estadisticas from '../../components/Estadisticas';
 
 export default function EstadisticasPage() {
@@ -11,7 +11,7 @@ export default function EstadisticasPage() {
         <Estadisticas />
       </main>
 
-      <Footer />
+      <Footer2 />
     </div>
   );
 }
