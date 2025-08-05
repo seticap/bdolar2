@@ -5,11 +5,6 @@ import { FaUser, FaChevronDown } from "react-icons/fa";
 import { FiLogOut } from "react-icons/fi";
 import { useRouter } from "next/navigation";
 
-/**
- * Navbar2 se ajusta dinámicamente según el estado del sidebar.
- * Detecta el colapso mediante una clase padre (`pl-64` o `pl-20`)
- */
-
 export default function Navbar2() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -50,22 +45,24 @@ export default function Navbar2() {
         transition-all duration-300
       `}
     >
-      {/* Espacio reservado para alinear con sidebar */}
-      <div className={`${sidebarCollapsed ? "w-20" : "w-64"} hidden sm:block`} />
+      {/* Espacio reservado para el sidebar (solo visible en sm+) */}
+      <div className={`hidden sm:block ${sidebarCollapsed ? "w-20" : "w-64"}`} />
 
       {/* Usuario / Dropdown */}
       <div className="ml-auto relative">
-        <div
+        <button
           onClick={() => setDropdownOpen(!dropdownOpen)}
-          className="flex items-center gap-2 cursor-pointer"
+          className="flex items-center gap-2 focus:outline-none"
         >
-          <FaUser className="text-gray-200" />
-          <span className="text-sm font-semibold hidden sm:inline">estefany1</span>
-          <FaChevronDown className="text-xs text-white" />
-        </div>
+          <FaUser className="text-gray-200 text-lg" />
+          <span className="text-sm font-semibold hidden md:inline text-white">
+            estefany1
+          </span>
+          <FaChevronDown className="text-xs text-white hidden sm:inline" />
+        </button>
 
         {dropdownOpen && (
-          <div className="absolute right-0 mt-2 w-32 bg-[#1a1a2e] rounded shadow-md z-50">
+          <div className="absolute right-0 mt-2 w-32 bg-[#1a1a2e] rounded shadow-lg z-50">
             <button
               onClick={handleLogout}
               className="w-full flex items-center px-4 py-2 text-sm text-white hover:bg-red-600 transition-colors"
