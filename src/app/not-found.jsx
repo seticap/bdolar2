@@ -1,3 +1,30 @@
+/**
+ * NotFound.jsx
+ * -- Juan Jose Peña Quiñonez
+ * -- Cc:1000273604
+ * 
+ *  Pagina 404 (ruta no encontrada) para la app con Next.js (App Router).
+ *  Este componente se renderiza automaticamente cuando una ruta bajo el segmento actual
+ *  no coinciden con ninguna pagina existente.
+ * 
+ *  Caracteristicas:
+ *   - Mensaje claro de "Pagina no encontrada" con branding institucional.
+ *   - Boton para volver al inicio.
+ *   - Diselo centrado, responsive y accesible.
+ * 
+ *  Tecnologias:
+ *   - `Next.js App Router`
+ *   - `next/image` para optimizacion de imagenes
+ *   - `next/link` para navegacion del lado del cliente
+ * 
+ *  Ubicacion recomendada:
+ *   - A nivel de app (`/app/not-found.jsx`) para un 404 global
+ *   - 0 dentro de un segmento (``/app/dashboard/not-found.jsx`) para un 404 contextual
+ * 
+ *  Accesibilidad:
+ *   - Estructura semantica con <main>
+ *   - Contraste alto y texto descriptivo
+ */
 'use client'
 
 import Link from 'next/link';

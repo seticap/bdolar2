@@ -1,3 +1,33 @@
+/**
+ * Estadisticas.jsx
+ * -- Juan Jose Peña Quiñonez
+ * -- Cc:1000273604
+ *  Componente de alto nivel para listar estadísticas de mercado
+ *  segmentadas por **IMCs** y **CLIENTES**, con filtros persistentes.
+ * 
+ *  Principales responsabilidades
+ *   - Cargar filtros (IMCs/CLIENTES) con `LocalStorage` para persistencia.
+ *   - Construir el PayLoad de filtros esperando por la API (mapeo de monedas, etc.)
+ *   - Consumir la API (`fethEstadisticasAPI`) y transformar respuesta -> UI (`mapToUI`)
+ *   - Presentar los datos en tarjetas (`CardEstadistica`) y abrir un modal para editar filtros (`ModalFiltros`).
+ *  
+ *  Dependencias:
+ *   - Services/estadisticasService: `fetchEstadisticasAPI`, `fetchFiltrosDesdeDatos`
+ *   - Componentes: `ModalFiltros`, `CardEstadistica`
+ * 
+ *  Persistencia:
+ *   - `LocalStorage`["filtrosIMCs"] y `LocalStorage["filtrosClientes"]` guardarn arrays de strings:
+ *      {merc: string[], moneda: string[], plazo: string[]}
+ * 
+ *  Convenciones de filtros:
+ *   - `"Todos"` significa "sin filtro" para ese campo.
+ *   - Monedas del UI -> ID numérico para la API (ver `mapMoneda`).
+ *  
+ *  Estados: 
+ *   - `formDataIMCs` / `formDataClientes` -> filtros vigentes para cada grupo
+ *   - `FilasIMCs` / `filasClientes` -> datos transformados para UI
+ *   - `MostrarModal`, `tipoActivo`, `cargando` -> control del modal y cargas
+ */
 "use client";
 import React, { useState, useEffect } from "react";
 import {
@@ -6,7 +36,7 @@ import {
 } from "../services/estadisticasService";
 import ModalFiltros from "./ModalFiltros";
 import CardEstadistica from "./CardEstadistica";
-
+/** Opciones de referencia (actualmente no usadas directamente  en el render)*/
 const opcionesMercado = [
   "Todos",
   "SPOT",
@@ -16,7 +46,9 @@ const opcionesMercado = [
   "IRS",
   "OPCION",
 ];
-
+/** Mapeo UI -> API para el campo Moneda.
+ *  La Api espera un número; el UI muestra string
+ */
 const mapMoneda = {
   "USD/COP": 1,
   "EUR/COP": 2,
@@ -30,7 +62,7 @@ const mapMoneda = {
   "USD/AUD": 10,
   "GBP/COP": 11,
 };
-
+/** Opciones de referencia para plazo (no usadas directamente en el render) */
 const opcionesPlazo = [
   "Todos",
   "0",
@@ -41,11 +73,14 @@ const opcionesPlazo = [
 ];
 
 const Estadisticas = () => {
+  /** Datos agregados (no usadis en el render directo- Legado) */
   const [filas, setFilas] = useState([]);
+  // Modal de filtros
   const [mostrarModal, setMostrarModal] = useState(false);
   const [cargando, setCargando] = useState(false);
-  const [tipoActivo, setTipoActivo] = useState("");
+  const [tipoActivo, setTipoActivo] = useState(""); //"IMCs" | "Clientes"
 
+  // Filtros actuales(persisten en LocalStorage)
   const [formDataIMCs, setFormDataIMCs] = useState({
     merc: ["Todos"],
     moneda: ["Todos"],
@@ -56,9 +91,16 @@ const Estadisticas = () => {
     moneda: ["Todos"],
     plazo: ["Todos"],
   });
+  //Filas (UI) por grupo
   const [filasIMCs, setFilasIMCs] = useState([]);
   const [filasClientes, setFilasClientes] = useState([]);
-
+  /**
+   *  Init:
+   *  1) Lee filtros guardados (Imcs/Clientes) de localStorage y los normaliza a arrays.
+   *  2) Pide a la API los filtros válidos actuales (mercados/monedas/plazos) por tipo (1=IMCs, 2=Clientes).
+   *  3) Limpia filtros locales contra los validos de la API.
+   *  4) Cargar datos inciales usando los filtros saneados.
+   */
   useEffect(() => {
     const init = async () => {
       const imcs = JSON.parse(localStorage.getItem("filtrosIMCs") || "{}");
@@ -81,14 +123,16 @@ const Estadisticas = () => {
         plazo: normalize(clientes.plazo),
       };
 
-      // 🧼 Limpiar valores no válidos según API
+      // Fecha del dia (formato YYYY-MM-DD) - usada por endpoints
       const fecha = new Date().toISOString().split("T")[0];
 
+      // Filtros válidos desde backend para cada tipo
       const filtrosIMC = await fetchFiltrosDesdeDatos(1, fecha);
       const filtrosCLI = await fetchFiltrosDesdeDatos(2, fecha);
-
+      
       const withTodos = (arr) => ["Todos", ...arr];
 
+      // Sanea valores locales contra lo permitido por la API
       const limpiar = (f, valid) => ({
         merc: f.merc.filter((m) => withTodos(valid.mercados).includes(m)),
         moneda: f.moneda.filter((m) => withTodos(valid.monedas).includes(m)),
@@ -101,18 +145,23 @@ const Estadisticas = () => {
       setFormDataIMCs(formIMCs);
       setFormDataClientes(formClientes);
 
-      // ✅ Cargar datos con filtros limpios
+      //  Cargar inicial de datos (ambos grupos) con filtros limpios
       cargarDatos(formIMCs, formClientes);
     };
 
     init();
   }, []);
-
+  
+  /**
+   *  Construye el objeto de filtros esperado por backend a partir del estado del UI:
+   *   - Omite campos con "Todos"
+   *   - Convierte Moneda (string) -> ID (número) y toma el primer valor si hay varios:
+   */
   const obtenerFiltros = (data) => {
     const filtros = {};
 
     if (!data.merc.includes("Todos")) {
-      filtros["Merc."] = data.merc;
+      filtros["Merc."] = data.merc; // La API acepta array para Merc.
     }
 
     if (!data.moneda.includes("Todos")) {
@@ -121,17 +170,24 @@ const Estadisticas = () => {
         .filter((id) => typeof id === "number");
 
       if (monedas.length > 0) {
-        // Si la API solo acepta un valor:
+        // Algunas APIs solo acepta un ID de moneda
         filtros["Moneda"] = monedas[0];
       }
     }
 
     if (!data.plazo.includes("Todos")) {
-      filtros["Plazo"] = data.plazo;
+      filtros["Plazo"] = data.plazo; // Según contrato, puede ser array
     }
 
     return filtros;
   };
+
+  /**
+   * Handler cuando el usuario guarda filtros en el modal:
+   *  - Llama API con filtros backend-compatibles
+   *  - Transforma respuesta a UI y filtra client-side (para coherencia visual)
+   *  - Persiste filtros por tipo en LocalStorage 
+   */
 
   const handleGuardar = async (filtrosActualizados) => {
     setCargando(true);
@@ -147,6 +203,7 @@ const Estadisticas = () => {
       );
       const nuevos = mapToUI(nuevosDatos, tipoActivo);
 
+      // Filtro adicional en UI (por si la API devuelve extra)
       const nuevosFiltrados = nuevos.filter((fila) => {
         const m1 =
           filtrosActualizados.merc.includes("Todos") ||
@@ -183,6 +240,10 @@ const Estadisticas = () => {
     }
   };
 
+  /**
+   * Carga datos para ambos gruois (IMCs y CLIENTES) en paralelo.
+   * Usa por defecto los filtros actuales en estado, pero admite overrides.
+   */
   const cargarDatos = async (
     filtrosIMCs = formDataIMCs,
     filtrosClientes = formDataClientes
@@ -198,6 +259,11 @@ const Estadisticas = () => {
     setFilasClientes(mapToUI(clientes, "CLIENTES"));
   };
 
+  /** 
+   * Transforma la respuesta cruda de API (nombres de columnas) a un objeto apto para UI.
+   *  - Formatea numéricos a moneda local  ´es-CO´ con 2 decimales.
+   *  - Inserta `id` estable basado en índice + tipo para key de React.
+  */
   const mapToUI = (datos, tipo) =>
     datos.map((dato, idx) => ({
       id: `api-${tipo}-${idx}`,
@@ -247,6 +313,7 @@ const Estadisticas = () => {
       <div className="container mx-auto">
         <h2 className="text-2xl font-bold mb-4 text-center">Estadísticas</h2>
 
+        {/** Reset global de filtros (ambos grupos) */}
         <div className="flex justify-center mt-2 mb-6">
           <button
             onClick={() => {
@@ -267,6 +334,7 @@ const Estadisticas = () => {
           </button>
         </div>
 
+        {/** Secciones IMCs y CLIENTES */}
         <div className="space-y-10">
           {["IMCs", "CLIENTES"].map((tipo) => {
             const datosGrupo = tipo === "IMCs" ? filasIMCs : filasClientes;
@@ -276,6 +344,7 @@ const Estadisticas = () => {
                 key={tipo}
                 className="bg-white/5 backdrop-blur-sm rounded-lg shadow-md p-4 sm:p-6"
               >
+                {/* Header sección */}
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
                   <h3 className="text-red-500 text-2xl font-bold">{tipo}</h3>
                   <button
@@ -288,7 +357,8 @@ const Estadisticas = () => {
                     Editar
                   </button>
                 </div>
-
+                
+                {/* Contenido sección */}
                 {datosGrupo.length === 0 ? (
                   <p className="text-gray-400 italic text-center">
                     No hay datos para los filtros seleccionados.
@@ -306,6 +376,7 @@ const Estadisticas = () => {
         </div>
       </div>
 
+        {/* Modal de filtros contextual (IMCs/CLIENTES) */}
       {mostrarModal && (
         <ModalFiltros
           formData={tipoActivo === "IMCs" ? formDataIMCs : formDataClientes}

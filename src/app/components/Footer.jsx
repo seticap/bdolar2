@@ -18,17 +18,17 @@ const FooterPage = () => {
         {/* Logos partners */}
         <div className="flex flex-wrap justify-center md:justify-normal items-center gap-4 md:gap-8">
           <img
-            src="images/sfclogo.png"
+            src="../images/sfclogo.png"
             alt="sfc"
             className="h-[70px] sm:h-[90px] md:h-[110px] px-2 md:px-10"
           />
           <img
-            src="images/tpicap.png"
+            src="../images/tpicap.png"
             alt="tpicap"
             className="h-[70px] sm:h-[90px] md:h-[110px] px-2 md:px-10"
           />
           <img
-            src="images/bvclogo1.png"
+            src="../images/bvclogo1.png"
             alt="bvc1"
             className="h-[70px] sm:h-[90px] md:h-[110px] px-2 md:px-10"
           />
