@@ -1,6 +1,6 @@
 'use client';
 
-import Footer2 from '../../components/Footer2';
+import Footer from '../../components/Footer'
 import Estadisticas from '../../components/Estadisticas';
 
 export default function spotPage() {
@@ -9,8 +9,7 @@ export default function spotPage() {
       
       <main className="flex-grow bg-[#0c0c14] text-white">
       </main>
-
-      <Footer2 />
+       <Footer/>
     </div>
   );
 }

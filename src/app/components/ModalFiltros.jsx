@@ -1,3 +1,34 @@
+/**
+ * ModalFiltros.jsx
+ * -- Juan Jose Peña Quiñonez
+ * -- Cc:1000273604
+ * 
+ * Modal de filtros para las secciones de estadísticas (IMCs/CLIENTES).
+ * Permite seleccionar múltiples valores para **Mercado**, **Moneda** y **Plazo**
+ * con la convención de  **Todos** como estado no-filtrado.
+ * 
+ * Funcionalidades clave:
+ *  - Carga dinámica de opciones válidas desde backend según `tipoActivo` (1 = IMCs, 2 = CLIENTES)
+ *  - Normaliza/Inyecta la opción "Todos" y limpia `formData` para evitar valores invalidos.
+ *  - Interfaz con checkboxes multi-selección y resaltado de selección.
+ *  - Botones **Guardar** (propaga filtros al padre) y **Cancelar** (cierra modal)
+ *  - Accesible: `role=dialog`, `aria-modal="true"`, overlay con `backdrop-blur`
+ *  
+ * Props:
+ *  - formData: {merc: string[], moneda: string[], plazo: string[] }
+ *  - setFormData: React.Dispatch para actualizar `formData` (controlado por el padre)
+ *  - tipoActivo: "IMCs" | "CLIENTES" (determina sector: 1 o 2 para la API)
+ *  - handleGuardar: (data) => Promise<void> | void (accíon al confirmar)
+ *  - cargando: boolean (deshabilita botones cuando hay una acción en progreso)
+ *  - cerrar: () => void (cierra el modal)
+ * 
+ * Dependencias:
+ *  - `fetchFiltrosDesdeDatos(sector:number, fecha:string)` -> {mercados: string[], monedas: string[], plazos: string[] }
+ * 
+ * Convenciones:
+ *  - Si se selecciona **"Todos"** en un campo, se ignoran otras selecciones en ese campo.
+ *  - Si se deselecciona todo, se restablece a **"Todos"** para evitar estado vacío.
+ */
 import React, { useEffect, useState } from "react";
 import { fetchFiltrosDesdeDatos } from "../services/estadisticasService";
 
@@ -9,11 +40,19 @@ const ModalFiltros = ({
   cargando,
   cerrar,
 }) => {
+  // Opciones válidas traídas desde backend
   const [opciones, setOpciones] = useState({
     mercados: [],
     monedas: [],
     plazos: [],
   });
+
+  /**
+   * Carga de opciones desde backend cada vez que cambia `tipoActivo`.
+   *  - Determina `sector` (1 IMCs / 2 CLIENTES)
+   *  - Pide filtros a la API y los normaliza agregando "Todos" al inicio
+   *  - Limpia el `formData` para asegurar que solo contenga valores válidos
+   */
 
   useEffect(() => {
     let cancelado = false;
@@ -21,12 +60,13 @@ const ModalFiltros = ({
     if (!tipoActivo) return;
 
     const fetchData = async () => {
-      const sector = tipoActivo.toUpperCase() === "IMCS" ? 1 : 2;
+      const sector = tipoActivo.toUpperCase() === "IMCS" ? 1 : 2; // Nota: "IMCS"
       const fecha = new Date().toISOString().split("T")[0];
 
       const filtros = await fetchFiltrosDesdeDatos(sector, fecha);
       if (cancelado) return;
 
+      // Validación defensiva ante payload incompleto
       if (
         !filtros.mercados.length ||
         !filtros.monedas.length ||
@@ -35,6 +75,8 @@ const ModalFiltros = ({
         console.warn("⚠️ Filtros incompletos del backend. Se omite carga.");
         return;
       }
+
+      // Inyecta "Todos" como primera opción en cada grupo
       console.log("🧪 Filtros recibidos:", filtros);
 
       const nuevosFiltros = {
@@ -45,7 +87,7 @@ const ModalFiltros = ({
 
       setOpciones(nuevosFiltros);
 
-      // 🧼 Limpieza de formData para evitar valores fantasmas
+      //  Limpieza de formData actual para eliminar valires no válidos
       setFormData((prev) => ({
         merc: prev.merc.filter((m) => nuevosFiltros.mercados.includes(m)),
         moneda: prev.moneda.filter((m) => nuevosFiltros.monedas.includes(m)),
@@ -58,7 +100,14 @@ const ModalFiltros = ({
     return () => {
       cancelado = true;
     };
-  }, [tipoActivo]);
+  }, [tipoActivo, setFormData]);
+
+  /**
+   * Maneja la selección de cada checkbox aplicando la convención de "Todos".
+   *  - Si se elige "Todos", se resetea el campo a ["Todos"].
+   *  - Si se selecciona otro valor, se quita "Todos" del arreglo.
+   *  - Si el arreglo queda vacío, vuelve a ["Todos"]. 
+   */
 
   const handleCheck = (campo, valor) => {
     setFormData((prev) => {
@@ -77,10 +126,18 @@ const ModalFiltros = ({
       return { ...prev, [campo]: nuevos };
     });
   };
-
+  
+  /**
+   * Renderiza un bloque de selección para un campo dado:
+   *  - Label: Etiqueta visible ("Mercado", "Moneda", "Plazo")
+   *  - Campo: Key en formData ("Merc" | "Moneda" | "Plazo")
+   *  - Valores: opciones disponibles (Array de strings)
+   */
   const renderCampo = (label, campo, valores) => (
     <div>
       <label className="block text-sm font-semibold mb-2">{label}</label>
+
+      {/* Resumen de selección actual */}
       <small className="text-gray-400 mb-2 block">
         {formData[campo].join(", ")}
       </small>
@@ -114,6 +171,7 @@ const ModalFiltros = ({
       aria-modal="true"
     >
       <div className="w-full max-w-3xl bg-gradient-to-br from-[#1c1c25] to-[#101018] text-white rounded-lg shadow-lg">
+        {/* Header del modal */}
         <div className="px-6 py-4 border-b border-[#2d2d3a] flex justify-between items-center">
           <h3 className="text-xl font-bold">Editar Filtros - {tipoActivo}</h3>
           <button
@@ -124,13 +182,14 @@ const ModalFiltros = ({
             &times;
           </button>
         </div>
-
+        {/* Contenido scrollable */}
         <div className="max-h-[80vh] overflow-y-auto px-6 py-6 space-y-6">
           {renderCampo("Mercado", "merc", opciones.mercados)}
           {renderCampo("Moneda", "moneda", opciones.monedas)}
           {renderCampo("Plazo", "plazo", opciones.plazos)}
         </div>
 
+        {/* Footer de acciones */}
         <div className="px-6 py-4 border-t border-[#2d2d3a] flex flex-col sm:flex-row justify-center sm:justify-end gap-4">
           <button
             onClick={cerrar}
