@@ -37,17 +37,17 @@ export function GraficoInteractivo() {
   return (
     <>
       {/* Card que contiene todo el gráfico */}
-      <Card className="w-full h-full min-h-[250px] @sm:min-h-[300px] @lg:min-h-[320px] p-2 @sm:p-3 text-white bg-custom-colortwo border-none flex flex-col">
+      <Card className="w-full h-full min-h-[200px] p-2 text-white bg-custom-colortwo border-none flex flex-col">
         {/* Encabezado de la tarjeta con el título */}
-        <CardHeader className="p-1 @sm:p-2 text-center">
-          <CardTitle className="text-md @sm:text-md font-medium">
+        <CardHeader className="p-1 text-center">
+          <CardTitle className="text-md font-medium">
             VOLUMEN TRANSADO
           </CardTitle>
         </CardHeader>
 
         {/* Gráfico en el centro de la card */}
         <CardContent className="flex-1 flex items-center justify-center p-0">
-          <div className="w-full h-full @sm:min-h-[200px] min-h-[180px]">
+          <div className="w-full h-full min-h-[180px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie

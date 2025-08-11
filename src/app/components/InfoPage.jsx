@@ -2,54 +2,14 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import NewsPage from "./NewsPage";
-// import { MiniChart } from "./MiniChart";
+import { useInfoData } from "../services/InfoDataProvider";
+import { MiniChart } from "./MiniChart";
 
 const InfoPage = () => {
-  // Datos simulados de empresas (nombre, valor, variación porcentual).
-  // Datos de empresas
-  const empresas = [
-    { nombre: "FABRICATO", valor: "180", variacion: "0,000" },
-    { nombre: "ECOPETROL", valor: "2.180,00", variacion: "+2,588" },
-    { nombre: "BANCOLOMBIA", valor: "45.460,00", variacion: "-0,004" },
-    { nombre: "GRUPO SURA", valor: "37.400,00", variacion: "-0,107" },
-    { nombre: "GRUPO ARGOS", valor: "10.800,00", variacion: "0,000" },
-    { nombre: "ECOPETROL", valor: "2.180,00", variacion: "+2,588" },
-    { nombre: "BANCOLOMBIA", valor: "45.460,00", variacion: "-0,004" },
-    { nombre: "GRUPO SURA", valor: "37.400,00", variacion: "-0,107" },
-    { nombre: "GRUPO ARGOS", valor: "10.800,00", variacion: "0,000" },
-    { nombre: "BANCOLOMBIA", valor: "45.460,00", variacion: "-0,004" },
-    { nombre: "GRUPO SURA", valor: "37.400,00", variacion: "-0,107" },
-    { nombre: "GRUPO ARGOS", valor: "10.800,00", variacion: "0,000" },
-    { nombre: "GRUPO ARGOS", valor: "10.800,00", variacion: "0,000" },
-    { nombre: "ECOPETROL", valor: "2.180,00", variacion: "+2,588" },
-    { nombre: "BANCOLOMBIA", valor: "45.460,00", variacion: "-0,004" },
-    { nombre: "GRUPO SURA", valor: "37.400,00", variacion: "-0,107" },
-    { nombre: "GRUPO ARGOS", valor: "10.800,00", variacion: "0,000" },
-    { nombre: "BANCOLOMBIA", valor: "45.460,00", variacion: "-0,004" },
-    { nombre: "GRUPO SURA", valor: "37.400,00", variacion: "-0,107" },
-    { nombre: "GRUPO ARGOS", valor: "10.800,00", variacion: "0,000" },
-    { nombre: "GRUPO ARGOS", valor: "10.800,00", variacion: "0,000" },
-    { nombre: "ECOPETROL", valor: "2.180,00", variacion: "+2,588" },
-    { nombre: "BANCOLOMBIA", valor: "45.460,00", variacion: "-0,004" },
-    { nombre: "GRUPO SURA", valor: "37.400,00", variacion: "-0,107" },
-    { nombre: "GRUPO ARGOS", valor: "10.800,00", variacion: "0,000" },
-    { nombre: "BANCOLOMBIA", valor: "45.460,00", variacion: "-0,004" },
-    { nombre: "GRUPO SURA", valor: "37.400,00", variacion: "-0,107" },
-    { nombre: "GRUPO ARGOS", valor: "10.800,00", variacion: "0,000" },
-  ];
-
-  // Datos simulados de índices accionarios.
-  // Datos de índices
-  const indices = [
-    { nombre: "IGBC", valor: "13.290,88", variacion: "-0,000" },
-    { nombre: "COLCAP", valor: "1.559,16", variacion: "+0,668" },
-    { nombre: "COLOA", valor: "9.846,80", variacion: "-0,000" },
-    { nombre: "IGBC", valor: "13.290,88", variacion: "-0,000" },
-    { nombre: "COLCAP", valor: "1.559,16", variacion: "+0,668" },
-    { nombre: "COLOA", valor: "9.846,80", variacion: "-0,000" },
-    { nombre: "IGBC", valor: "13.290,88", variacion: "-0,000" },
-    { nombre: "COLCAP", valor: "1.559,16", variacion: "+0,668" },
-  ];
+  const { empresas, indices } = useInfoData();
+  // console.log("empresas", empresas);
+  // console.log("indices", indices);
+  //console.log("noticias", noticias)
 
   return (
     <div className="w-full grid grid-cols-1 lg:grid-cols-6 gap-4 px-4 sm:px-6 bg-backgroundtwo py-4 sm:py-[10%]">
@@ -79,11 +39,9 @@ const InfoPage = () => {
                 </span>
                 <span
                   className={`w-1/3 text-right text-xs sm:text-base ${
-                    e.variacion.startsWith("+")
-                      ? "text-green-400" // Verde para valores positivos.
-                      : e.variacion.startsWith("-")
-                      ? "text-red-400" // Rojo para valores negativos.
-                      : "text-white" // Blanco para valores neutros.
+                    e.variacion.startsWith("-")
+                      ? "text-red-400"
+                      : "text-green-400"
                   }`}
                 >
                   {e.variacion}
@@ -102,7 +60,11 @@ const InfoPage = () => {
               ÍNDICES ACCIONARIOS
             </CardTitle>
             {/* Logo de Bolsa de Valores */}
-            <img src="images/bvclogo.png" alt="BVC" className="h-4 sm:h-6" />{" "}
+            <img
+              src="images/bvclogo.png"
+              alt="BVC"
+              className="h-4 sm:h-6"
+            />{" "}
           </CardHeader>
           <CardContent className="overflow-y-auto max-h-[calc(100%-40px)] scrollbar-custom">
             {indices.map((ind, i) => (
@@ -120,11 +82,9 @@ const InfoPage = () => {
                 </span>
                 <span
                   className={`w-1/3 text-right text-xs sm:text-base ${
-                    ind.variacion.startsWith("+")
-                      ? "text-green-400"
-                      : ind.variacion.startsWith("-")
+                    ind.variacion.startsWith("-")
                       ? "text-red-400"
-                      : "text-white"
+                      : "text-green-400"
                   }`}
                 >
                   {ind.variacion}
@@ -133,7 +93,7 @@ const InfoPage = () => {
             ))}
             {/* Gráfico MiniChart integrado */}
             <div className="mt-4">
-              {/*<MiniChart />*/}
+              <MiniChart />
             </div>
           </CardContent>
         </Card>
@@ -141,7 +101,7 @@ const InfoPage = () => {
 
       {/* NOTICIAS */}
       <div className="lg:col-span-3 pl-0 lg:pl-[23%]">
-        <Card className="bg-backgroundtwo text-white border-none h-[60vh] sm:h-[90vh]">
+        <Card className="bg-custom-colortwo text-white border-none h-auto min-h-[60vh]">
           <CardHeader className="bg-red-700 flex justify-between items-center mt-[-24px] h-8 sm:h-10">
             <CardTitle className="text-sm sm:text-xl font-semibold">
               NOTICIAS ACTUALES

@@ -3,8 +3,8 @@
 import axios from "axios"
 import * as neffos from "neffos.js"
 
-const TOKEN_URL = "https://set-fx.com/api/v1/auth/access/token/";
-const WS_BASE_URL = "wss://set-fx.com/ws/dolar";
+const TOKEN_URL = "http://set-fx.com/api/v1/auth/access/token/";
+const WS_BASE_URL = "ws://set-fx.com/ws/dolar";
 
 class TokenService {
     constructor() {
