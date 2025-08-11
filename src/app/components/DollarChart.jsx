@@ -253,7 +253,7 @@ const DollarChart = () => {
   useEffect(() => {
     // Obtiene el token de autenticación desde el servicio o del almacenamiento local
     const token =
-      tokenServices.getToken() || localStorage.getItem("token-socket");
+      tokenServices.getToken() || localStorage.getItem("auth-token");
     // Si no hay token disponible, muestra error y detiene la ejecución
     if (!token) {
       console.error("Token no disponible");
@@ -280,6 +280,7 @@ const DollarChart = () => {
           const dataStr = parsed.result[0].datos_grafico_moneda_mercado;
 
           // Usa expresiones regulares para encontrar los datos de precios, montos y etiquetas
+          
           const pricesMatch = dataStr.match(/data:\s*\[([^\]]+)\]/);
           const amountsMatches = dataStr.match(/data:\s*\[([^\]]+)\]/g) || [];
           const labelsMatch = dataStr.match(/labels:\s*\[([^\]]+)\]/);
@@ -439,7 +440,6 @@ const DollarChart = () => {
         boxSizing: "border-box",
         display: "flex",
         justifyContent: "center",
-        // alignItems: "stretch",
         height: "100%", // <-- Nuevo
       }}
     >
@@ -449,8 +449,6 @@ const DollarChart = () => {
           width: "100%",
           height: "100%", // <-- Nuevo
           minHeight: "500px",
-          // maxHeight: "100%",
-          maxWidth: "1100px",
           display: "block",
           position: "relative",
           overflow: "hidden",
