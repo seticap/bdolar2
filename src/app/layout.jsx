@@ -4,7 +4,11 @@ import { InfoDataProvider } from "./services/InfoDataProvider";
 
 export const metadata = {
   title: "Dollar Set-FX",
+   icons: {
+    icon: "/favicon.png", // o "/favicon.png"
+  },
 };
+
 
 export default function RootLayout({ children }) {
   return (

@@ -6,7 +6,7 @@ const FooterPage = () => {
         {/* Logo SET ICAP */}
         <div className="flex items-center justify-center md:justify-start gap-4 mb-4 md:mb-0">
           <img
-            src="logoSet.png"
+            src="../logoSet.png"
             alt="Logo SET ICAP"
             className="h-[80px] sm:h-[100px] md:h-[120px] px-4 md:px-30"
           />
@@ -18,17 +18,17 @@ const FooterPage = () => {
         {/* Logos partners */}
         <div className="flex flex-wrap justify-center md:justify-normal items-center gap-4 md:gap-8">
           <img
-            src="images/sfclogo.png"
+            src="../images/sfclogo.png"
             alt="sfc"
             className="h-[70px] sm:h-[90px] md:h-[110px] px-2 md:px-10"
           />
           <img
-            src="images/tpicap.png"
+            src="../images/tpicap.png"
             alt="tpicap"
             className="h-[70px] sm:h-[90px] md:h-[110px] px-2 md:px-10"
           />
           <img
-            src="images/bvclogo1.png"
+            src="../images/bvclogo1.png"
             alt="bvc1"
             className="h-[70px] sm:h-[90px] md:h-[110px] px-2 md:px-10"
           />
