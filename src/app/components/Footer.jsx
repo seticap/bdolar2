@@ -6,7 +6,7 @@ const FooterPage = () => {
         {/* Logo SET ICAP */}
         <div className="flex items-center justify-center md:justify-start gap-4 mb-4 md:mb-0">
           <img
-            src="logoSet.png"
+            src="../logoSet.png"
             alt="Logo SET ICAP"
             className="h-[80px] sm:h-[100px] md:h-[120px] px-4 md:px-30"
           />
