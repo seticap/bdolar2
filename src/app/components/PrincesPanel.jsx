@@ -1,49 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
-import {
-  createChart,
-  CrosshairMode,
-  LineStyle,
-  AreaSeries,
-  CandlestickSeries,
-  LineSeries,
-} from "lightweight-charts";
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as LWC from "lightweight-charts";
+import { useWebSocketData } from "../services/WebSocketDataProvider";
 
-/* ---------- Skin / helpers de estilo ---------- */
+/* ---------- tema ---------- */
 const THEME = {
-  bg: "#0b0f17",
-  panel: "#0d1119",
   text: "#e5e7eb",
   textDim: "rgba(229,231,235,.75)",
   grid: "rgba(255,255,255,.06)",
   gridLite: "rgba(255,255,255,.04)",
   border: "rgba(255,255,255,.10)",
-  shadow: "0 12px 30px rgba(0,0,0,.35)",
   font: "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto",
-  // colores del look de la imagen
-  // -> rojo como color principal del precio
-  accent: "#dc2626", // rojo
-  accentTop: "rgba(220,38,38,.28)", // degradado superior rojo
-  accentBottom: "rgba(220,38,38,.06)", // degradado inferior rojo
-
-  // velas alcistas (verde) + auxiliares
-  up: "#16a34a", // verde vela alcista
-  blue: "#22d3ee", // para MA(8)
-  red: "#dc2626", // reutilizado para banda -2σ
-  gray: "#94a3b8", // banda +2σ / líneas neutras
-
-  // ...lo que ya tienes
-  // --- NUEVO: paleta verde para el precio ---
   accentG: "#22c55e",
-  accentGTop: "rgba(34,197,94,.22)",
-  accentGBottom: "rgba(34,197,94,.06)",
-
-  // --- NUEVO: turquesa que combina con el tema ---
-  turquoise: "#2dd4bf",
+  accentGTop: "rgba(34,197,94,.08)",
+  accentGBottom: "rgba(34,197,94,.02)",
 };
-const numberFmt = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 });
-const formatPrice = (v) => (v == null ? "--" : numberFmt.format(v));
+
+const TIME_ZONE = "America/Bogota";
 
 const BASE_OPTS = {
   layout: {
@@ -52,8 +26,8 @@ const BASE_OPTS = {
     fontFamily: THEME.font,
   },
   grid: {
-    vertLines: { color: THEME.gridLite, style: LineStyle.Dotted },
-    horzLines: { color: THEME.grid, style: LineStyle.Dotted },
+    vertLines: { color: THEME.gridLite, style: LWC.LineStyle.Dotted },
+    horzLines: { color: THEME.grid, style: LWC.LineStyle.Dotted },
   },
   watermark: {
     visible: true,
@@ -66,23 +40,15 @@ const BASE_OPTS = {
   leftPriceScale: {
     visible: true,
     borderColor: THEME.border,
-    scaleMargins: { top: 0.07, bottom: 0.12 },
+    scaleMargins: { top: 0.12, bottom: 0.18 },
     entireTextOnly: true,
     borderVisible: true,
   },
   rightPriceScale: { visible: false },
   crosshair: {
-    mode: CrosshairMode.Normal,
-    vertLine: {
-      color: "rgba(255,255,255,.30)",
-      style: LineStyle.Dotted,
-      width: 1,
-    },
-    horzLine: {
-      color: "rgba(255,255,255,.30)",
-      style: LineStyle.Dotted,
-      width: 1,
-    },
+    mode: LWC.CrosshairMode.Normal,
+    vertLine: { color: "rgba(255,255,255,.30)", style: LWC.LineStyle.Dotted, width: 1 },
+    horzLine: { color: "rgba(255,255,255,.30)", style: LWC.LineStyle.Dotted, width: 1 },
   },
   timeScale: {
     borderColor: THEME.border,
@@ -94,148 +60,164 @@ const BASE_OPTS = {
   },
 };
 
-// Mini-leyenda flotante (añade esto a tus utils)
-function makeLegend(container) {
-  const box = document.createElement("div");
-  Object.assign(box.style, {
-    position: "absolute",
-    left: "12px",
-    bottom: "10px",
-    background: "rgba(9,13,22,.72)",
-    backdropFilter: "blur(4px)",
-    color: THEME.text,
-    border: `1px solid ${THEME.border}`,
-    borderRadius: "10px",
-    padding: "6px 8px",
-    fontSize: "12px",
-    lineHeight: "1.35",
-    boxShadow: THEME.shadow,
-    display: "flex",
-    gap: "12px",
-    zIndex: 2,
-  });
-  container.appendChild(box);
-  return {
-    el: box,
-    set(items) {
-      box.innerHTML = items
-        .map(
-          (i) =>
-            `<span>${dot(i.color)}<span style="opacity:.8">${
-              i.label
-            }:</span> <strong>${i.value}</strong></span>`
-        )
-        .join("");
-    },
-    remove() {
-      box.remove();
-    },
-  };
+/* ====== helpers de parseo ====== */
+const tryJson = (s) => { try { return JSON.parse(s); } catch { return null; } };
+function parseWeird(s) {
+  if (typeof s !== "string") return null;
+  let t = s.trim();
+  if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) t = t.slice(1, -1);
+  t = t.replace(/\\"/g, '"').replace(/\\n|\\r/g, "");
+  const j = tryJson(t); if (j) return j;
+  let fixed = t;
+  if (/^\s*(data|labels|datasets|prices)\s*:/.test(fixed)) fixed = `{${fixed}}`;
+  fixed = fixed
+    .replace(/'/g, '"')
+    .replace(/([\s{,])([a-zA-Z_][\w]*)\s*:/g, '$1"$2":')
+    .replace(/,\s*]/g, "]")
+    .replace(/,\s*}/g, "}");
+  return tryJson(fixed);
 }
-
-function makeTooltip() {
-  const t = document.createElement("div");
-  Object.assign(t.style, {
-    position: "absolute",
-    display: "none",
-    background: "linear-gradient(180deg,#0f172a,#0b1220)",
-    color: THEME.text,
-    border: `1px solid ${THEME.border}`,
-    borderRadius: "12px",
-    fontSize: "12px",
-    lineHeight: "1.35",
-    padding: "10px 12px",
-    pointerEvents: "none",
-    zIndex: 100,
-    whiteSpace: "nowrap",
-    boxShadow: THEME.shadow,
-    minWidth: "180px",
-  });
-  return t;
+const numbersFromString = (s) =>
+  typeof s === "string"
+    ? (s.match(/-?\d+(\.\d+)?/g) || []).map(Number).filter((n) => !Number.isNaN(n))
+    : null;
+function labelsFromString(s) {
+  if (typeof s !== "string") return null;
+  const j = tryJson(s); if (Array.isArray(j)) return j;
+  return s.split(",").map((x) => x.trim()).filter(Boolean);
 }
-
-const dot = (c) =>
-  `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:6px;vertical-align:middle"></span>`;
-/* --------------------------- Datos simulados --------------------------- */
-function genPriceSeries(days, stepMin = 10) {
-  const start = Date.now() - days * 24 * 60 * 60 * 1000;
-  let v = 4020 + Math.random() * 30;
-  const out = [];
-  for (let t = start; t <= Date.now(); t += stepMin * 60 * 1000) {
-    v += Math.sin(out.length / 12) * 0.6 + (Math.random() - 0.5) * 0.9;
-    out.push({ time: Math.floor(t / 1000), value: Number(v.toFixed(2)) });
-  }
-  return out;
-}
-
-function mockOhlcData(line) {
-  if (!line || !line.length) return [];
-  const ohlc = [];
-  for (let i = 0; i < line.length; i += 5) {
-    const chunk = line.slice(i, i + 5);
-    const open = ohlc.length ? ohlc[ohlc.length - 1].close : chunk[0].value;
-    const close = chunk[chunk.length - 1]?.value ?? open;
-    const high = Math.max(...chunk.map((p) => p.value), open, close);
-    const low = Math.min(...chunk.map((p) => p.value), open, close);
-    ohlc.push({
-      time: chunk[chunk.length - 1]?.time ?? line[i].time,
-      open: Number(open.toFixed(2)),
-      high: Number(high.toFixed(2)),
-      low: Number(low.toFixed(2)),
-      close: Number(close.toFixed(2)),
-    });
-  }
-  return ohlc;
-}
-
-function sma(lineData, period) {
-  const out = [];
-  let sum = 0;
-  for (let i = 0; i < lineData.length; i++) {
-    sum += lineData[i].value;
-    if (i >= period) sum -= lineData[i - period].value;
-    if (i >= period - 1) {
-      out.push({
-        time: lineData[i].time,
-        value: Number((sum / period).toFixed(2)),
-      });
+function firstChartLike(obj) {
+  if (!obj || typeof obj !== "object") return null;
+  const isChart = (o) =>
+    o &&
+    ((Array.isArray(o.datasets) &&
+      (Array.isArray(o.datasets?.[0]?.data) || typeof o.datasets?.[0]?.data === "string")) ||
+      Array.isArray(o.prices) ||
+      typeof o.prices === "string");
+  const seeds = [obj, obj?.data, obj?.data?.data, obj?.data?.data?.data, obj?.result?.[0], obj?.result?.[0]?.data];
+  for (const s of seeds) if (isChart(s)) return s;
+  const q = seeds.filter(Boolean); const seen = new Set();
+  while (q.length) {
+    const cur = q.shift(); if (!cur || typeof cur !== "object" || seen.has(cur)) continue;
+    seen.add(cur);
+    if (isChart(cur)) return cur;
+    for (const k of Object.keys(cur)) {
+      const v = cur[k];
+      if (v && typeof v === "object") q.push(v);
+      if (typeof v === "string") { const p = parseWeird(v); if (p) q.push(p); }
     }
   }
-  return out;
+  return null;
 }
 
-/* ------------------------------- Precios ------------------------------- */
-function mountPreciosChart(el, size, dataByRange, selectedRange, chartRef) {
-  el.style.background = "#0c0c14";
-  el.style.position = "relative";
+/* ====== tiempo + parser ====== */
+function toEpochSeconds(t) {
+  if (t == null) return null;
+  if (typeof t === "number") return t > 1e12 ? Math.floor(t / 1000) : t;
+  if (typeof t === "object" && "timestamp" in t) return Math.floor(t.timestamp);
+  return null;
+}
+function labelToTsSec(label, index, { baseMidnightMs, range }) {
+  if (typeof label === "number") return toEpochSeconds(label);
+  if (typeof label === "string") {
+    if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}$/.test(label)) {
+      const d = Date.parse(label.replace(" ", "T"));
+      if (!Number.isNaN(d)) return Math.floor(d / 1000);
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(label)) {
+      const d = Date.parse(label);
+      if (!Number.isNaN(d)) return Math.floor(d / 1000);
+    }
+    if (/^\d{2}:\d{2}$/.test(label)) {
+      const [H, M] = label.split(":").map(Number);
+      return Math.floor((baseMidnightMs + (H * 60 + M) * 60 * 1000) / 1000);
+    }
+    const p = Date.parse(label);
+    if (!Number.isNaN(p)) return Math.floor(p / 1000);
+  }
+  const isIntra = range === "1d" || range === "5d";
+  const stepMs = isIntra ? 60 * 1000 : 24 * 60 * 60 * 1000;
+  return Math.floor((baseMidnightMs + index * stepMs) / 1000);
+}
+/* decimación */
+const MAX_POINTS_BY_RANGE = { "1d": 3000, "5d": 8000, "1m": 9000, "6m": 12000, "1a": 15000 };
+function decimatePoints(pts, range) {
+  const cap = MAX_POINTS_BY_RANGE[range] ?? 12000;
+  if (!pts?.length || pts.length <= cap) return pts;
+  const step = Math.ceil(pts.length / cap);
+  const out = [];
+  for (let i = 0; i < pts.length; i += step) out.push(pts[i]);
+  if (out[out.length - 1]?.time !== pts[pts.length - 1].time) out.push(pts[pts.length - 1]);
+  return out;
+}
+function parseApiPayloadToLineData(payload, range) {
+  if (!payload) return [];
+  let root = typeof payload === "string" ? parseWeird(payload) ?? payload : payload;
+  if (typeof root === "string") root = parseWeird(root) ?? tryJson(root) ?? root;
+  const chart = firstChartLike(root) || root;
 
-  const mainDiv = document.createElement("div");
-  Object.assign(mainDiv.style, { width: "100%", height: "430px" });
-  el.appendChild(mainDiv);
+  let labels = Array.isArray(chart?.labels)
+    ? chart.labels
+    : typeof chart?.labels === "string"
+    ? labelsFromString(chart.labels)
+    : [];
 
-  const title = document.createElement("div");
-  Object.assign(title.style, {
-    position: "absolute",
-    top: "8px",
-    left: 0,
-    right: 0,
-    textAlign: "center",
-    color: THEME.text,
-    fontSize: "14px",
-    fontWeight: "600",
-    pointerEvents: "none",
-    zIndex: 3,
-  });
-  title.textContent = "Cotización USD/COP";
-  el.appendChild(title);
+  let raw = [];
+  if (Array.isArray(chart?.datasets)) {
+    const d0 = chart.datasets[0]?.data;
+    raw = Array.isArray(d0) ? d0 : typeof d0 === "string" ? numbersFromString(d0) ?? [] : [];
+  } else if (Array.isArray(chart?.prices)) raw = chart.prices;
+  else if (typeof chart?.prices === "string") raw = numbersFromString(chart.prices) ?? [];
 
-  const mainChart = createChart(mainDiv, {
-    width: mainDiv.clientWidth || size.width,
-    height: mainDiv.clientHeight || 430,
-    ...BASE_OPTS,
-  });
+  if (!raw?.length) {
+    const stack = [chart]; const seen = new Set();
+    while (stack.length && !raw.length) {
+      const cur = stack.pop(); if (!cur || typeof cur !== "object" || seen.has(cur)) continue;
+      seen.add(cur);
+      for (const k of Object.keys(cur)) {
+        const v = cur[k];
+        if (typeof v === "string") {
+          const nums = numbersFromString(v);
+          if (nums && nums.length >= 5) { raw = nums; break; }
+        } else if (v && typeof v === "object") stack.push(v);
+      }
+    }
+  }
 
-  const areaMain = mainChart.addSeries(AreaSeries, {
+  const prices = (raw || []).map(Number).filter((n) => !Number.isNaN(n));
+  if ((!labels || !labels.length) && prices.length) labels = Array.from({ length: prices.length }, (_, i) => i);
+  if (!labels.length || !prices.length) return [];
+
+  const now = new Date();
+  const baseMidnightMs = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).getTime();
+
+  const dup = new Map();
+  const pts = [];
+  const len = Math.min(labels.length, prices.length);
+
+  for (let i = 0; i < len; i++) {
+    const L = labels[i];
+    let ts = labelToTsSec(L, i, { baseMidnightMs, range });
+    if (typeof L === "string" && /^\d{2}:\d{2}$/.test(L)) {
+      const count = (dup.get(L) ?? 0) + 1;
+      dup.set(L, count);
+      ts = Math.max(ts, ts + (count - 1));
+    }
+    pts.push({ time: ts, value: prices[i] });
+  }
+
+  pts.sort((a, b) => a.time - b.time);
+  for (let i = 1; i < pts.length; i++) {
+    if (pts[i].time <= pts[i - 1].time) pts[i].time = pts[i - 1].time + 1;
+  }
+  return decimatePoints(pts, range);
+}
+
+/* ===== compat series ===== */
+const normalizeSeriesReturn = (s) => (s?.series || s?.api || s || null);
+const hasSetData = (api) => !!api && typeof api.setData === "function";
+function createAreaSeriesCompat(chart) {
+  const opts = {
     lineColor: THEME.accentG,
     topColor: THEME.accentGTop,
     bottomColor: THEME.accentGBottom,
@@ -246,537 +228,305 @@ function mountPreciosChart(el, size, dataByRange, selectedRange, chartRef) {
     crosshairMarkerRadius: 3.5,
     crosshairMarkerBorderColor: "#0b1020",
     crosshairMarkerBackgroundColor: THEME.accentG,
-  });
-
-  const setDataFor = (r) => {
-    const data = dataByRange[r] || [];
-    areaMain.setData(data);
-    mainChart.timeScale().fitContent();
   };
-  setDataFor(selectedRange);
-
-  const tooltip = makeTooltip();
-  el.appendChild(tooltip);
-
-  mainChart.subscribeCrosshairMove((param) => {
-    if (!param?.time || !param.seriesData) {
-      tooltip.style.display = "none";
-      return;
-    }
-    const d = new Date(param.time * 1000);
-    const dd = d.toISOString().slice(0, 10);
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mm = String(d.getMinutes()).padStart(2, "0");
-    const v = param.seriesData.get(areaMain)?.value;
-
-    tooltip.innerHTML = `
-      <div><strong>${dd} ${hh}:${mm}</strong></div>
-      <div style="color:#34d399">Cotización USD/COP: ${
-        v?.toFixed(2) ?? "--"
-      }</div>
-    `;
-
-    const rect = el.getBoundingClientRect();
-    const tw = tooltip.offsetWidth;
-    const th = tooltip.offsetHeight;
-    let left = param.point.x + 10;
-    let top = param.point.y + 10;
-    if (left + tw > rect.width) left = param.point.x - tw - 10;
-    if (top + th > rect.height) top = param.point.y - th - 10;
-    tooltip.style.left = `${left}px`;
-    tooltip.style.top = `${top}px`;
-    tooltip.style.display = "block";
-  });
-
-  const ro = new ResizeObserver(() => {
-    chartRef.current?.applyOptions?.({
-      width: mainDiv.clientWidth,
-      height: mainDiv.clientHeight,
-    });
-  });
-  ro.observe(mainDiv);
-
-  const api = {
-    setRange(r) {
-      setDataFor(r);
-    },
-    applyOptions(opts) {
-      mainChart.applyOptions(
-        opts || { width: mainDiv.clientWidth, height: mainDiv.clientHeight }
-      );
-    },
-    remove() {
-      ro.disconnect();
-      try {
-        mainChart.remove();
-      } catch {}
-      title.remove();
-      tooltip.remove();
-    },
-    timeScale() {
-      return mainChart.timeScale();
-    },
-  };
-  api.__composite = true;
-  return api;
-}
-
-/* ----------------------------- Promedio ---------------------------- */
-function mountPromedioChart(el, size, lineData) {
-  const chart = createChart(el, {
-    width: size.width,
-    height: size.height,
-    ...BASE_OPTS,
-  });
-
-  const area = chart.addSeries(AreaSeries, {
-    lineColor: THEME.accentG,
-    topColor: THEME.accentGTop,
-    bottomColor: THEME.accentGBottom,
-    lineWidth: 2,
-    lastValueVisible: false,
-    priceLineVisible: false,
-  });
-  area.setData(lineData);
-
-  const ma8 = chart.addSeries(LineSeries, {
-    color: THEME.turquoise,
-    lineWidth: 2.2,
-  });
-  const ma13 = chart.addSeries(LineSeries, {
-    color: THEME.gray,
-    lineWidth: 2.2,
-  });
-  ma8.setData(sma(lineData, 8));
-  ma13.setData(sma(lineData, 13));
-
-  chart.timeScale().fitContent();
-
-  const tooltip = makeTooltip();
-  el.appendChild(tooltip);
-
-  chart.subscribeCrosshairMove((param) => {
-    if (!param?.time || !param.seriesData) {
-      tooltip.style.display = "none";
-      return;
-    }
-    const date = new Date(param.time * 1000);
-    const hours = String(date.getUTCHours()).padStart(2, "0");
-    const minutes = String(date.getUTCMinutes()).padStart(2, "0");
-
-    const areaValue = param.seriesData.get(area)?.value;
-    const ma8Value = param.seriesData.get(ma8)?.value;
-    const ma13Value = param.seriesData.get(ma13)?.value;
-
-    tooltip.innerHTML = `
-  <div style="opacity:.85;margin-bottom:6px">${hours}:${minutes}</div>
-  <div style="color:${THEME.accentG}">Cotización USD/COP:&nbsp;<strong>${
-      areaValue?.toFixed(2) ?? "--"
-    }</strong></div>
-  <div>${dot(THEME.turquoise)}Media móvil (8):&nbsp;<strong>${
-      ma8Value?.toFixed(2) ?? "--"
-    }</strong></div>
-  <div>${dot(THEME.gray)}Media móvil (13):&nbsp;<strong>${
-      ma13Value?.toFixed(2) ?? "--"
-    }</strong></div>
-`;
-
-    const rect = el.getBoundingClientRect();
-    const tw = tooltip.offsetWidth;
-    const th = tooltip.offsetHeight;
-    let left = param.point.x + 10;
-    let top = param.point.y + 10;
-    if (left + tw > rect.width) left = param.point.x - tw - 10;
-    if (top + th > rect.height) top = param.point.y - th - 10;
-    tooltip.style.left = `${left}px`;
-    tooltip.style.top = `${top}px`;
-    tooltip.style.display = "block";
-  });
-
-  return chart;
-}
-
-/* ----------------------------- Velas ---------------------------- */
-function mountVelasChart(el, size, ohlcData) {
-  const chart = createChart(el, {
-    width: size.width,
-    height: size.height,
-    ...BASE_OPTS,
-  });
-
-  const candle = chart.addSeries(CandlestickSeries, {
-    upColor: THEME.up,
-    wickUpColor: THEME.up,
-    borderUpColor: THEME.up,
-
-    downColor: THEME.red,
-    wickDownColor: THEME.red,
-    borderDownColor: THEME.red,
-
-    borderVisible: true,
-  });
-  candle.setData(ohlcData);
-  chart.timeScale().fitContent();
-
-  const tooltip = makeTooltip();
-  el.appendChild(tooltip);
-
-  chart.subscribeCrosshairMove((param) => {
-    if (!param?.time || !param.point || !param.seriesData) {
-      tooltip.style.display = "none";
-      return;
-    }
-    const v = param.seriesData.get(candle);
-    if (!v) {
-      tooltip.style.display = "none";
-      return;
-    }
-    const d = new Date(param.time * 1000);
-    const hh = String(d.getUTCHours()).padStart(2, "0");
-    const mm = String(d.getUTCMinutes()).padStart(2, "0");
-    const fmt = (n) => Number(n).toFixed(2);
-
-    tooltip.innerHTML = `
-      <div style="opacity:.85;margin-bottom:6px">${hh}:${mm}</div>
-      <div>Open:&nbsp;<strong>${fmt(v.open)}</strong></div>
-      <div>High:&nbsp;<strong>${fmt(v.high)}</strong></div>
-      <div>Low:&nbsp;&nbsp;<strong>${fmt(v.low)}</strong></div>
-      <div>Close:<strong>${fmt(v.close)}</strong></div>
-    `;
-
-    const rect = el.getBoundingClientRect();
-    const tw = tooltip.offsetWidth || 160;
-    const th = tooltip.offsetHeight || 90;
-    let left = param.point.x + 12;
-    let top = param.point.y + 12;
-    if (left + tw > rect.width) left = param.point.x - tw - 12;
-    if (top + th > rect.height) top = param.point.y - th - 12;
-    tooltip.style.left = `${left}px`;
-    tooltip.style.top = `${top}px`;
-    tooltip.style.display = "block";
-  });
-
-  return {
-    applyOptions(opts) {
-      chart.applyOptions(
-        opts || {
-          width: el.clientWidth || size.width,
-          height: el.clientHeight || size.height,
-        }
-      );
-    },
-    remove() {
-      try {
-        chart.remove();
-      } catch {}
-      tooltip.remove();
-    },
-    timeScale() {
-      return chart.timeScale();
-    },
-  };
-}
-
-/* ----------------------------- Bollinger ---------------------------- */
-function mountBollingerChart(el, size, lineData) {
-  const chart = createChart(el, {
-    width: size.width,
-    height: size.height,
-    ...BASE_OPTS,
-  });
-
-  // Serie de precio (área + “glow” ligero)
-  const price = chart.addSeries(AreaSeries, {
-    lineColor: THEME.accentG,
-    topColor: THEME.accentGTop,
-    bottomColor: THEME.accentGBottom,
-    lineWidth: 2.5,
-    lastValueVisible: true,
-    priceLineVisible: true,
-    priceLineColor: "rgba(34,197,94,.45)",
-  });
-  price.setData(lineData);
-
-  // Medias y bandas
-  const ma8Data = sma(lineData, 8);
-  const ma8 = chart.addSeries(LineSeries, {
-    color: THEME.turquoise,
-    lineWidth: 2.2,
-  });
-  ma8.setData(ma8Data);
-
-  const ma20 = sma(lineData, 20);
-  const base = chart.addSeries(LineSeries, {
-    color: THEME.textDim,
-    lineWidth: 2,
-  });
-  base.setData(ma20);
-
-  const upper = chart.addSeries(LineSeries, {
-    color: THEME.gray,
-    lineWidth: 1.6,
-    lineStyle: LineStyle.Dotted,
-  });
-  const lower = chart.addSeries(LineSeries, {
-    color: THEME.red,
-    lineWidth: 1.6,
-    lineStyle: LineStyle.Dotted,
-  });
-
-  const band = ma20.map((p, i) => {
-    const slice = lineData.slice(Math.max(0, i + 1 - 20), i + 1);
-    const mean = p.value;
-    const sd =
-      Math.sqrt(
-        slice.reduce((acc, x) => acc + Math.pow(x.value - mean, 2), 0) /
-          Math.max(1, slice.length)
-      ) || 0.5;
-    return { time: p.time, up: mean + 2 * sd, dn: mean - 2 * sd };
-  });
-
-  upper.setData(
-    band.map((b) => ({ time: b.time, value: Number(b.up.toFixed(2)) }))
-  );
-  lower.setData(
-    band.map((b) => ({ time: b.time, value: Number(b.dn.toFixed(2)) }))
-  );
-
-  // Marca el último punto (compatible con distintas versiones)
-  const last = lineData[lineData.length - 1];
-  if (last) {
-    if (typeof price.setMarkers === "function") {
-      price.setMarkers([
-        {
-          time: last.time,
-          position: "inBar",
-          color: THEME.accent,
-          shape: "circle",
-          size: 1,
-        },
-      ]);
-    } else if (typeof price.createPriceLine === "function") {
-      // Fallback: línea de precio en el último valor
-      price.createPriceLine({
-        price: last.value,
-        color: "rgba(34,197,94,.45)",
-        lineStyle: LineStyle.Solid,
-        lineWidth: 1,
-        axisLabelVisible: false,
-        title: "",
-      });
-    }
+  if (typeof chart.addAreaSeries === "function") {
+    const s = chart.addAreaSeries(opts);
+    const api = normalizeSeriesReturn(s);
+    if (hasSetData(api)) return api;
   }
-
-  chart.timeScale().fitContent();
-
-  // Tooltip + Leyenda
-  const tooltip = makeTooltip();
-  el.appendChild(tooltip);
-  const legend = makeLegend(el);
-
-  const updateUI = (param) => {
-    const p = param.seriesData.get(price)?.value;
-    const m8 = param.seriesData.get(ma8)?.value;
-    const up = param.seriesData.get(upper)?.value;
-    const dn = param.seriesData.get(lower)?.value;
-
-    legend.set([
-      { color: THEME.accentG, label: "Precio", value: formatPrice(p) },
-      { color: THEME.turquoise, label: "MA(8)", value: formatPrice(m8) },
-      { color: THEME.red, label: "BB -2σ", value: formatPrice(dn) },
-      { color: THEME.gray, label: "BB +2σ", value: formatPrice(up) },
-    ]);
-
-    if (!param.time || !param.point) {
-      tooltip.style.display = "none";
-      return;
-    }
-    const d = new Date(param.time * 1000);
-    const hh = String(d.getUTCHours()).padStart(2, "0");
-    const mm = String(d.getUTCMinutes()).padStart(2, "0");
-
-    tooltip.innerHTML = `
-  <div style="opacity:.85;margin-bottom:6px">${hh}:${mm}</div>
-  <div>${dot(THEME.accentG)}Cotización:&nbsp;<strong>${formatPrice(
-      p
-    )}</strong></div>
-  <div>${dot(THEME.turquoise)}Media móvil (8):&nbsp;<strong>${formatPrice(
-      m8
-    )}</strong></div>
-  <div>${dot(THEME.red)}Band -2σ:&nbsp;<strong>${formatPrice(dn)}</strong></div>
-  <div>${dot(THEME.gray)}Band +2σ:&nbsp;<strong>${formatPrice(
-      up
-    )}</strong></div>
-`;
-
-    const rect = el.getBoundingClientRect();
-    const tw = tooltip.offsetWidth || 200;
-    const th = tooltip.offsetHeight || 110;
-    let left = param.point.x + 12;
-    let top = param.point.y + 12;
-    if (left + tw > rect.width) left = param.point.x - tw - 12;
-    if (top + th > rect.height) top = param.point.y - th - 12;
-    tooltip.style.left = `${left}px`;
-    tooltip.style.top = `${top}px`;
-    tooltip.style.display = "block";
-  };
-
-  chart.subscribeCrosshairMove(updateUI);
-
-  return {
-    applyOptions(opts) {
-      chart.applyOptions(
-        opts || {
-          width: el.clientWidth || size.width,
-          height: el.clientHeight || size.height,
-        }
-      );
-    },
-    remove() {
-      try {
-        chart.remove();
-      } catch {}
-      tooltip.remove();
-      legend.remove();
-    },
-    timeScale() {
-      return chart.timeScale();
-    },
-  };
+  if (typeof chart.addSeries === "function") {
+    try { const sA = chart.addSeries("Area", opts); const a = normalizeSeriesReturn(sA); if (hasSetData(a)) return a; } catch {}
+    try { const sB = chart.addSeries({ type: "Area", ...opts }); const b = normalizeSeriesReturn(sB); if (hasSetData(b)) return b; } catch {}
+    try {
+      const C = LWC.AreaSeries || LWC.SeriesArea || LWC.DefaultAreaSeries;
+      if (C) { const sC = chart.addSeries(C, opts); const c = normalizeSeriesReturn(sC); if (hasSetData(c)) return c; }
+    } catch {}
+  }
+  const s = chart.addLineSeries?.({
+    color: THEME.accentG, lineWidth: 2, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: true,
+  });
+  return normalizeSeriesReturn(s);
 }
 
-/* --------------------------- Componente UI --------------------------- */
-export default function Grafica() {
-  const wrapRef = useRef(null);
+/* ======================== UI ======================== */
+export default function PrincesPanel({ className = "", height = 520 }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
+  const seriesRef = useRef(null);
+  const priceLineRef = useRef(null);
+  const overlayRef = useRef(null); // << overlay
 
   const [tab, setTab] = useState("precios");
   const [range, setRange] = useState("1d");
 
-  const dataByRange = useMemo(
-    () => ({
-      "1d": genPriceSeries(1, 5),
-      "5d": genPriceSeries(5, 10),
-      "1m": genPriceSeries(30, 30),
-      "6m": genPriceSeries(180, 60),
-      "1a": genPriceSeries(365, 120),
-    }),
-    []
-  );
+  const { dataById, chartByRange, loadChart } = useWebSocketData();
 
-  const lineData = useMemo(
-    () => dataByRange[range] ?? dataByRange["1d"],
-    [dataByRange, range]
-  );
-  const ohlcData = useMemo(() => mockOhlcData(lineData), [lineData]);
-  const size = useMemo(() => ({ width: 1100, height: 520 }), []);
+  const nf0 = useMemo(() => new Intl.NumberFormat("es-CO"), []);
+  const nf2 = useMemo(() => new Intl.NumberFormat("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }), []);
 
+  const lineDataRef = useRef([]);
+  const [lastGoodByRange, setLastGoodByRange] = useState({});
+
+  const rawPayload = useMemo(() => {
+    if (chartByRange?.[range]) return chartByRange[range];
+    if (lastGoodByRange[range]) return lastGoodByRange[range];
+    if (dataById) {
+      const prefer = [1006, 1005, 1001, 1000];
+      for (const id of prefer) if (dataById[id]) return dataById[id];
+      for (const v of Object.values(dataById)) {
+        const obj = typeof v === "string" ? parseWeird(v) ?? v : v;
+        if (firstChartLike(obj)) return v;
+      }
+    }
+    return null;
+  }, [chartByRange, range, lastGoodByRange, dataById]);
+
+  const lineData = useMemo(() => {
+    const parsed = parseApiPayloadToLineData(rawPayload, range);
+    if (!rawPayload) console.warn("[PrincesPanel] rawPayload=null para rango:", range);
+    if (!parsed?.length) console.warn("[PrincesPanel] sin puntos tras parseo. rango:", range, "payload:", rawPayload);
+    return parsed;
+  }, [rawPayload, range]);
+
+  // cache del último payload válido
+  useEffect(() => {
+    if (rawPayload && lineData.length > 1) {
+      setLastGoodByRange((prev) => (prev[range] ? prev : { ...prev, [range]: rawPayload }));
+    }
+  }, [rawPayload, lineData.length, range]);
+
+  // pedir datos (defensivo: también uppercase)
+  useEffect(() => {
+    loadChart?.(range);
+    const upper = range.toUpperCase();
+    if (upper !== range) loadChart?.(upper);
+  }, [range, loadChart]);
+
+  // mantener ref de datos para tooltip/autoscale
+  useEffect(() => { lineDataRef.current = lineData; }, [lineData]);
+
+  /* crear chart 1 vez */
   useEffect(() => {
     const el = canvasRef.current;
-    if (!el) return;
+    if (!el || tab !== "precios" || chartRef.current) return;
 
-    el.innerHTML = "";
-    if (chartRef.current) {
-      try {
-        chartRef.current.remove();
-      } catch {}
-      chartRef.current = null;
-    }
+    el.style.background = "#0c0c14";
+    el.style.position = "relative";
 
-    if (tab === "precios") {
-      chartRef.current = mountPreciosChart(
-        el,
-        size,
-        dataByRange,
-        range,
-        chartRef
-      );
-    } else if (tab === "promedio") {
-      chartRef.current = mountPromedioChart(el, size, lineData);
-    } else if (tab === "velas") {
-      chartRef.current = mountVelasChart(el, size, ohlcData);
-    } else if (tab === "bollinger") {
-      chartRef.current = mountBollingerChart(el, size, lineData);
-    }
+    // overlay
+    const overlay = document.createElement("div");
+    Object.assign(overlay.style, {
+      position: "absolute",
+      inset: "0",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: THEME.textDim,
+      fontSize: "14px",
+      zIndex: 5,
+      pointerEvents: "none",
+    });
+    overlay.textContent = "Cargando gráfico…";
+    el.appendChild(overlay);
+    overlayRef.current = overlay;
+
+    const pane = document.createElement("div");
+    Object.assign(pane.style, { width: "100%", height: `${height}px` });
+    el.appendChild(pane);
+
+    const chart = LWC.createChart(pane, { width: el.clientWidth || 1200, height, ...BASE_OPTS });
+    chart.applyOptions({
+      handleScroll: { mouseWheel: true, pressedMouseMove: true },
+      handleScale: { axisPressedMouseMove: false, mouseWheel: true, pinch: true },
+    });
+    chartRef.current = chart;
+
+    const series = createAreaSeriesCompat(chart);
+    seriesRef.current = series;
+
+    series?.applyOptions?.({
+      priceFormat: { type: "custom", minMove: 1, precision: 0, formatter: (p) => nf0.format(p) },
+      autoscaleInfoProvider: (original) => {
+        const info = original();
+        const data = lineDataRef.current;
+        if (!info?.priceRange || !data?.length) return info;
+        const vals = data.map((d) => d.value).slice().sort((a, b) => a - b);
+        const lo = vals[Math.floor(vals.length * 0.01)];
+        const hi = vals[Math.ceil(vals.length * 0.99)];
+        const pad = (hi - lo) * 0.07;
+        return { ...info, priceRange: { minValue: lo - pad, maxValue: hi + pad } };
+      },
+    });
+
+    // tooltip
+    const tooltip = document.createElement("div");
+    Object.assign(tooltip.style, {
+      position: "absolute",
+      display: "none",
+      background: "linear-gradient(180deg,#0f172a,#0b1220)",
+      color: THEME.text,
+      border: `1px solid ${THEME.border}`,
+      borderRadius: "12px",
+      fontSize: "12px",
+      lineHeight: "1.35",
+      padding: "10px 12px",
+      pointerEvents: "none",
+      zIndex: 10,
+      boxShadow: "0 12px 30px rgba(0,0,0,.35)",
+      transform: "translate(-60%,-110%)",
+      whiteSpace: "nowrap",
+    });
+    el.appendChild(tooltip);
+
+    const onMove = (param) => {
+      if (!param?.time || !param.seriesData) { tooltip.style.display = "none"; return; }
+      const ts = typeof param.time === "number" ? param.time : (param.time?.timestamp ?? param.time);
+      const sec = ts > 1e12 ? Math.floor(ts / 1000) : ts;
+      const d = new Date(sec * 1000);
+      const isIntra = range === "1d" || range === "5d";
+      const fecha = d.toLocaleDateString("es-CO", { timeZone: TIME_ZONE });
+      const hora  = d.toLocaleTimeString("es-CO", { hour12: false, hour: "2-digit", minute: "2-digit", timeZone: TIME_ZONE });
+      const v = series ? param.seriesData.get(series)?.value : undefined;
+      if (v == null) { tooltip.style.display = "none"; return; }
+
+      const data = lineDataRef.current || [];
+      let prevIdx = -1;
+      for (let i = data.length - 1; i >= 0; i--) { if (data[i].time < sec) { prevIdx = i; break; } }
+      const prev = prevIdx >= 0 ? data[prevIdx].value : null;
+      const delta = prev != null ? v - prev : null;
+      const pct = prev != null && prev !== 0 ? (delta / prev) * 100 : null;
+
+      tooltip.innerHTML = `
+        <div><strong>${isIntra ? `${fecha} ${hora}` : `${fecha}`}</strong></div>
+        <div style="color:#34d399">Cotización USD/COP: ${nf2.format(v)}</div>
+        ${delta!=null ? `<div style="opacity:.85;color:${delta>=0?'#22c55e':'#f43f5e'}">
+          ${delta>=0?'+':''}${nf2.format(delta)} (${pct!=null && pct>=0?'+':''}${pct?.toFixed(2)}%)
+        </div>` : ''}
+      `;
+
+      const xRaw = param.point?.x ?? 0;
+      const y = series.priceToCoordinate(v);
+      if (y == null) { tooltip.style.display = "none"; return; }
+
+      const rect = el.getBoundingClientRect();
+      const tw = tooltip.offsetWidth || 200;
+      const th = tooltip.offsetHeight || 60;
+      const margin = 8;
+      const x = Math.min(Math.max(xRaw, margin + tw / 2), rect.width - margin - tw / 2);
+      const yClamped = Math.min(Math.max(y, margin + th), rect.height - margin);
+
+      tooltip.style.left = `${x}px`;
+      tooltip.style.top  = `${yClamped}px`;
+      tooltip.style.display = "block";
+    };
+    chart.subscribeCrosshairMove(onMove);
 
     const ro = new ResizeObserver(() => {
-      const w = el.clientWidth || size.width;
-      const h = el.clientHeight || size.height;
-      const cur = chartRef.current;
-      if (!cur) return;
-      cur.applyOptions?.({
-        width: w,
-        height: h,
-        layout: {
-          background: { type: "solid", color: "#0c0c14" },
-          textColor: THEME.text,
-        },
-      });
+      chart.applyOptions({ width: el.clientWidth || 1200, height });
     });
-
     ro.observe(el);
+
     return () => {
+      chart.unsubscribeCrosshairMove(onMove);
       ro.disconnect();
-      chartRef.current?.remove?.();
+      try { chart.remove(); } catch {}
       chartRef.current = null;
+      seriesRef.current = null;
+      priceLineRef.current = null;
+      overlayRef.current = null;
+      Array.from(el.querySelectorAll("div")).forEach((n, i) => { if (i > 0) n.remove(); });
     };
-  }, [tab, lineData, ohlcData, size, range, dataByRange]);
+  }, [tab, height, nf0, nf2, range]);
 
-  function zoomLogical(ts, factor) {
-    // factor < 1  -> zoom IN (acerca)
-    // factor > 1  -> zoom OUT (aleja)
-    const r = ts.getVisibleLogicalRange?.();
-    if (!r) return;
-    const span = r.to - r.from;
-    const newSpan = span * factor;
-    const delta = (newSpan - span) / 2;
-    ts.setVisibleLogicalRange({
-      from: r.from - delta,
-      to: r.to + delta,
+  /* actualizar datos + overlay */
+  useEffect(() => {
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    const overlay = overlayRef.current;
+    if (!chart || !series) return;
+
+    if (!lineData.length) {
+      // sin puntos → limpiamos y mostramos overlay
+      series.setData([]);
+      if (overlay) {
+        overlay.textContent = `Sin datos para ${range.toUpperCase()} (WS/API)`;
+        overlay.style.display = "flex";
+      }
+      return;
+    }
+
+    // con puntos → ocultar overlay y pintar
+    if (overlay) overlay.style.display = "none";
+    series.setData(lineData);
+    chart.timeScale().fitContent();
+
+    const maxP = lineData.reduce((a, b) => (b.value > a.value ? b : a), lineData[0]);
+    const minP = lineData.reduce((a, b) => (b.value < a.value ? b : a), lineData[0]);
+    series.setMarkers?.([
+      { time: maxP.time, position: "aboveBar", color: "#22c55e", shape: "arrowUp",   text: `Máx ${nf2.format(maxP.value)}` },
+      { time: minP.time, position: "belowBar", color: "#f43f5e", shape: "arrowDown", text: `Mín ${nf2.format(minP.value)}` },
+    ]);
+
+    const last = lineData[lineData.length - 1]?.value;
+    if (last != null) {
+      if (!priceLineRef.current) {
+        priceLineRef.current = series.createPriceLine?.({
+          price: last,
+          color: "#22c55e",
+          lineWidth: 1,
+          lineStyle: LWC.LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: "Último",
+        });
+      } else {
+        priceLineRef.current.applyOptions?.({ price: last });
+      }
+    }
+  }, [lineData, nf2, range]);
+
+  /* opciones por rango */
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const isIntra = range === "1d" || range === "5d";
+    chart.applyOptions({
+      timeScale: {
+        ...BASE_OPTS.timeScale,
+        timeVisible: isIntra,
+        secondsVisible: false,
+        barSpacing: isIntra ? 7 : 6,
+        rightOffset: isIntra ? 12 : 20,
+        tickMarkFormatter: (t) => {
+          const ts = typeof t === "number" ? t : (t?.timestamp ?? t);
+          const sec = ts > 1e12 ? Math.floor(ts / 1000) : ts;
+          const d = new Date(sec * 1000);
+          return isIntra
+            ? d.toLocaleTimeString("es-CO", { hour12: false, hour: "2-digit", minute: "2-digit", timeZone: TIME_ZONE })
+            : d.toLocaleDateString("es-CO", { day: "2-digit", month: "short", timeZone: TIME_ZONE });
+        },
+      },
     });
-  }
-  const zoomIn = () => {
-    const ts = chartRef.current?.timeScale?.();
-    if (!ts) return;
-    zoomLogical(ts, 0.8); // 20% más cerca
-  };
+  }, [range]);
 
-  const zoomOut = () => {
-    const ts = chartRef.current?.timeScale?.();
-    if (!ts) return;
-    zoomLogical(ts, 1.25); // 25% más lejos
-  };
-
-  const resetHome = () => chartRef.current?.timeScale?.().fitContent();
   return (
-    <section
-      ref={wrapRef}
-      className="w-full max-w-[1200px] mx-auto p-4 text-white"
-    >
-      <div className="rounded-xl border border-slate-700 overflow-hidden bg-[#0d0f16]">
+    <section className={`w-full p-4 text-white ${className}`}>
+      <div className="max-w-[1400px] mx-auto rounded-xl border border-slate-700 overflow-hidden bg-[#0d0f16]">
         <div className="flex items-center justify-between bg-[#0a2b3e] px-4 py-3">
           <h3 className="text-slate-100 font-semibold">Precios</h3>
-          <div className="flex items-center gap-2 text-slate-100">
-            <span className="text-sm opacity-80 mr-2">Acciones</span>
-            <button
-              onClick={zoomIn}
-              className="p-1.5 rounded bg-[#114861] hover:bg-[#0e3a4d]"
-            >
-              ＋
-            </button>
-            <button
-              onClick={zoomOut}
-              className="p-1.5 rounded bg-[#114861] hover:bg-[#0e3a4d]"
-            >
-              －
-            </button>
-            <button
-              onClick={resetHome}
-              className="p-1.5 rounded bg-[#114861] hover:bg-[#0e3a4d]"
-            >
-              🏠
-            </button>
+          <div className="flex gap-1.5">
+            {["1d", "5d", "1m", "6m", "1a"].map((r) => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                className={`px-3 py-1.5 text-sm rounded-full font-medium transition-all duration-150 ${
+                  range === r
+                    ? "bg-green-500 text-black shadow-md"
+                    : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
+                }`}
+              >
+                {r.toUpperCase()}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -792,9 +542,7 @@ export default function Grafica() {
                 key={t.key}
                 onClick={() => setTab(t.key)}
                 className={`px-3 py-1.5 text-sm rounded-md transition ${
-                  tab === t.key
-                    ? "bg-white text-slate-900"
-                    : "text-slate-200 hover:bg-slate-700/40"
+                  tab === t.key ? "bg-white text-slate-900" : "text-slate-200 hover:bg-slate-700/40"
                 }`}
               >
                 {t.label}
@@ -803,30 +551,8 @@ export default function Grafica() {
           </div>
         </div>
 
-        <div className="px-4 pb-2">
-          <div
-            ref={canvasRef}
-            className="relative w-full h-[520px] rounded-lg mt-3 bg-[#0c0c14]"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 px-4 pb-4">
-          {["1d", "5d", "1m", "6m", "1a"].map((r) => (
-            <button
-              key={r}
-              className={`px-3 py-1.5 rounded-md text-sm border ${
-                range === r
-                  ? "bg-[#0a2b3e] text-white border-transparent"
-                  : "bg-slate-800/40 text-slate-100 border-slate-700 hover:bg-slate-700/40"
-              }`}
-              onClick={() => {
-                setRange(r);
-                chartRef.current?.setRange?.(r);
-              }}
-            >
-              {r}
-            </button>
-          ))}
+        <div className="px-4 pb-4">
+          <div ref={canvasRef} className="relative w-full rounded-lg mt-3 bg-[#0c0c14]" style={{ height }} />
         </div>
       </div>
     </section>
