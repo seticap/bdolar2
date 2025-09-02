@@ -169,6 +169,9 @@ async function fetchChartHttp(periodo) {
 }
 
 export const WebSocketDataProvider = ({ children }) => {
+  const [dataById, setDataById] = useState({});
+  const [dataByHour, setDataByHour] = useState({});
+
 
   const [ dataById, setDataById] = useState({});
   const [ chartByRange, setChartByRange] = useState({});
@@ -287,6 +290,30 @@ if (msg.data !== undefined) {
     };
 
     connectWebSocket();
+  }, []);
+
+  const ChartData = (dataStr) => {
+    const pricesMatch = dataStr.match(/data:\s*\[([^\]]+)\]/);
+    const amountsMatches = dataStr.match(/data:\s*\[([^\]]+)\]/g) || [];
+    const labelsMatch = dataStr.match(/labels:\s*\[([^\]]+)\]/);
+
+    if (!pricesMatch || amountsMatches.length < 2 || !labelsMatch) return null;
+
+    const amountsMatch = amountsMatches[1];
+
+    const prices = pricesMatch[1]
+      ?.split(",")
+      .map(Number)
+      .filter((n) => !isNaN(n));
+    const amounts = amountsMatch
+      .match(/\[([^\]]+)\]/)?.[1]
+      ?.split(",")
+      .map(Number)
+      .filter((n) => !isNaN(n));
+    const labels = labelsMatch[1]
+      ?.split(",")
+      .map((label) => label.trim().replace(/["']/g, ""))
+      .filter(Boolean);
 
     return () => {
       if (typeof unsub === "function") {
@@ -325,6 +352,7 @@ if (msg.data !== undefined) {
 
   return (
     <WebSocketDataContext.Provider value={{ dataById, chartByRange, loadChart, updateData, currentRangeRef }}>
+
       {children}
     </WebSocketDataContext.Provider>
   );
