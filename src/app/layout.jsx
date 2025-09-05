@@ -20,6 +20,5 @@ export default function RootLayout({ children }) {
         </html>
       </WebSocketDataProvider>
     </InfoDataProvider>
-
   );
 }
