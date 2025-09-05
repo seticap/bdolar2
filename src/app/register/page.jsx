@@ -1,14 +1,3 @@
-/**
- * RegisterPage.jsx
- *
- *  Componente de formulario de registro SET-ICAP
- *   - Validación progresiva y global
- *   - Dependencia País -> Ciudad
- *   - Intereses (opción exclusiva)
- *   - Aceptación de políticas obligatoria
- *   - Mostrar/ocultar contraseña + medidor de fortaleza
- *   - Toast de feedback (reutiliza componente UI/Toast)
- */
 "use client";
 
 import { useState } from "react";
@@ -20,47 +9,335 @@ import ToastProvider from "../components/ToastProvider"; // ✅ asegúrate que l
 
 /** Lista de países ordenada alfabéticamente (ES) */
 const COUNTRIES = [
-  "Argentina","Alemania","Australia","Aruba","Bolivia","Brasil","Islas Virgenes Britanicas","Canada","Chile","China","Colombia","Costa Rica","Republica Dominicana","Ecuador","Emiratos Arabes Unidos","España","Estados Unidos","Francia","Guatemala","Hungria","Italia","Mexico","Nueva Zelanda","Paises Bajos","Panama","Peru","Puerto Rico","Uruguay","Venezuela","otro",
+  "Argentina",
+  "Alemania",
+  "Australia",
+  "Aruba",
+  "Bolivia",
+  "Brasil",
+  "Islas Virgenes Britanicas",
+  "Canada",
+  "Chile",
+  "China",
+  "Colombia",
+  "Costa Rica",
+  "Republica Dominicana",
+  "Ecuador",
+  "Emiratos Arabes Unidos",
+  "España",
+  "Estados Unidos",
+  "Francia",
+  "Guatemala",
+  "Hungria",
+  "Italia",
+  "Mexico",
+  "Nueva Zelanda",
+  "Paises Bajos",
+  "Panama",
+  "Peru",
+  "Puerto Rico",
+  "Uruguay",
+  "Venezuela",
+  "Otro",
 ].sort((a, b) => a.localeCompare(b, "es-ES", { sensitivity: "base" }));
 
 /** Ciudades por país (usadas al seleccionar un país) */
 const CITIES_BY_COUNTRY = {
-  Argentina:["Buenos Aires","Córdoba","Rosario","Mendoza","La Plata","Mar del Plata","San Miguel de Tucumán","Salta","Santa Fe","Corrientes"],
-  Alemania:["Berlín","Múnich","Hamburgo","Fráncfort","Colonia","Stuttgart","Düsseldorf"],
-  Australia:["Sídney","Melbourne","Brisbane","Perth","Adelaida","Gold Coast","Canberra"],
-  Aruba:["Oranjestad","San Nicolás","Paradera","Santa Cruz","Noord"],
-  Bolivia:["La Paz","Santa Cruz de la Sierra","Cochabamba","Sucre","Oruro","Potosí"],
-  Brasil:["São Paulo","Río de Janeiro","Brasilia","Salvador","Fortaleza","Belo Horizonte","Curitiba"],
-  "Islas Virgenes Britanicas":["Road Town","Spanish Town","Anegada","Great Harbour"],
-  Canada:["Toronto","Vancouver","Montreal","Calgary","Ottawa","Edmonton","Quebec"],
-  Chile:["Santiago","Valparaíso","Concepción","La Serena","Antofagasta","Temuco","Rancagua","Iquique","Talca"],
-  China:["Pekín","Shanghái","Guangzhou","Shenzhen","Chengdu","Wuhan","Hangzhou"],
-  Colombia:["Bogotá","Medellín","Cali","Barranquilla","Cartagena","Bucaramanga","Pereira","Manizales","Cúcuta","Santa Marta","Ibagué","Villavicencio","Pasto","Montería","Neiva","Armenia"],
-  "Costa Rica":["San José","Alajuela","Cartago","Heredia","Puntarenas","Liberia","Limón"],
-  "Republica Dominicana":["Santo Domingo","Santiago de los Caballeros","La Romana","San Pedro de Macorís","Puerto Plata","Higüey"],
-  Ecuador:["Quito","Guayaquil","Cuenca","Santo Domingo","Machala","Manta","Ambato"],
-  "Emiratos Arabes Unidos":["Dubái","Abu Dabi","Sharjah","Ajmán","Ras al-Jaima","Fujairah"],
-  España:["Madrid","Barcelona","Valencia","Sevilla","Zaragoza","Málaga","Murcia","Palma","Bilbao","Alicante","Córdoba","Valladolid","Vigo","Gijón","Hospitalet de Llobregat"],
-  "Estados Unidos":["New York","Los Angeles","Chicago","Houston","Phoenix","Philadelphia","San Antonio","San Diego","Dallas","San Jose","Austin","Jacksonville","San Francisco","Columbus","Charlotte"],
-  Francia:["París","Marsella","Lyon","Toulouse","Niza","Nantes","Estrasburgo"],
-  Guatemala:["Ciudad de Guatemala","Quetzaltenango","Escuintla","Antigua Guatemala","Chimaltenango"],
-  Hungria:["Budapest","Debrecen","Szeged","Miskolc","Pécs","Győr"],
-  Italia:["Roma","Milán","Nápoles","Turín","Palermo","Génova","Bolonia"],
-  Mexico:["Ciudad de México","Guadalajara","Monterrey","Puebla","Tijuana","León","Querétaro","Mérida","Cancún","Toluca","San Luis Potosí","Aguascalientes","Hermosillo","Chihuahua","Saltillo"],
-  "Nueva Zelanda":["Auckland","Wellington","Christchurch","Hamilton","Tauranga","Dunedin"],
-  "Paises Bajos":["Ámsterdam","Róterdam","La Haya","Utrecht","Eindhoven","Tilburgo"],
-  Panama:["Ciudad de Panamá","Colón","David","Santiago","Chitré","La Chorrera"],
-  Peru:["Lima","Arequipa","Trujillo","Chiclayo","Piura","Cusco","Iquitos","Huancayo","Tacna","Pucallpa"],
-  "Puerto Rico":["San Juan","Ponce","Mayagüez","Bayamón","Carolina","Arecibo"],
-  Uruguay:["Montevideo","Salto","Paysandú","Las Piedras","Rivera","Maldonado"],
-  Venezuela:["Caracas","Maracaibo","Valencia","Barquisimeto","Maracay","Ciudad Guayana","Maturín"],
-  otro:["Otra ciudad"],
+  Argentina: [
+    "Buenos Aires",
+    "Córdoba",
+    "Rosario",
+    "Mendoza",
+    "La Plata",
+    "Mar del Plata",
+    "San Miguel de Tucumán",
+    "Salta",
+    "Santa Fe",
+    "Corrientes",
+  ],
+  Alemania: [
+    "Berlín",
+    "Múnich",
+    "Hamburgo",
+    "Fráncfort",
+    "Colonia",
+    "Stuttgart",
+    "Düsseldorf",
+  ],
+  Australia: [
+    "Sídney",
+    "Melbourne",
+    "Brisbane",
+    "Perth",
+    "Adelaida",
+    "Gold Coast",
+    "Canberra",
+  ],
+  Aruba: ["Oranjestad", "San Nicolás", "Paradera", "Santa Cruz", "Noord"],
+  Bolivia: [
+    "La Paz",
+    "Santa Cruz de la Sierra",
+    "Cochabamba",
+    "Sucre",
+    "Oruro",
+    "Potosí",
+  ],
+  Brasil: [
+    "São Paulo",
+    "Río de Janeiro",
+    "Brasilia",
+    "Salvador",
+    "Fortaleza",
+    "Belo Horizonte",
+    "Curitiba",
+  ],
+  "Islas Virgenes Britanicas": [
+    "Road Town",
+    "Spanish Town",
+    "Anegada",
+    "Great Harbour",
+  ],
+  Canada: [
+    "Toronto",
+    "Vancouver",
+    "Montreal",
+    "Calgary",
+    "Ottawa",
+    "Edmonton",
+    "Quebec",
+  ],
+  Chile: [
+    "Santiago",
+    "Valparaíso",
+    "Concepción",
+    "La Serena",
+    "Antofagasta",
+    "Temuco",
+    "Rancagua",
+    "Iquique",
+    "Talca",
+  ],
+  China: [
+    "Pekín",
+    "Shanghái",
+    "Guangzhou",
+    "Shenzhen",
+    "Chengdu",
+    "Wuhan",
+    "Hangzhou",
+  ],
+  Colombia: [
+    "Bogotá",
+    "Medellín",
+    "Cali",
+    "Barranquilla",
+    "Cartagena",
+    "Bucaramanga",
+    "Pereira",
+    "Manizales",
+    "Cúcuta",
+    "Santa Marta",
+    "Ibagué",
+    "Villavicencio",
+    "Pasto",
+    "Montería",
+    "Neiva",
+    "Armenia",
+  ],
+  "Costa Rica": [
+    "San José",
+    "Alajuela",
+    "Cartago",
+    "Heredia",
+    "Puntarenas",
+    "Liberia",
+    "Limón",
+  ],
+  "Republica Dominicana": [
+    "Santo Domingo",
+    "Santiago de los Caballeros",
+    "La Romana",
+    "San Pedro de Macorís",
+    "Puerto Plata",
+    "Higüey",
+  ],
+  Ecuador: [
+    "Quito",
+    "Guayaquil",
+    "Cuenca",
+    "Santo Domingo",
+    "Machala",
+    "Manta",
+    "Ambato",
+  ],
+  "Emiratos Arabes Unidos": [
+    "Dubái",
+    "Abu Dabi",
+    "Sharjah",
+    "Ajmán",
+    "Ras al-Jaima",
+    "Fujairah",
+  ],
+  España: [
+    "Madrid",
+    "Barcelona",
+    "Valencia",
+    "Sevilla",
+    "Zaragoza",
+    "Málaga",
+    "Murcia",
+    "Palma",
+    "Bilbao",
+    "Alicante",
+    "Córdoba",
+    "Valladolid",
+    "Vigo",
+    "Gijón",
+    "Hospitalet de Llobregat",
+  ],
+  "Estados Unidos": [
+    "New York",
+    "Los Angeles",
+    "Chicago",
+    "Houston",
+    "Phoenix",
+    "Philadelphia",
+    "San Antonio",
+    "San Diego",
+    "Dallas",
+    "San Jose",
+    "Austin",
+    "Jacksonville",
+    "San Francisco",
+    "Columbus",
+    "Charlotte",
+  ],
+  Francia: [
+    "París",
+    "Marsella",
+    "Lyon",
+    "Toulouse",
+    "Niza",
+    "Nantes",
+    "Estrasburgo",
+  ],
+  Guatemala: [
+    "Ciudad de Guatemala",
+    "Quetzaltenango",
+    "Escuintla",
+    "Antigua Guatemala",
+    "Chimaltenango",
+  ],
+  Hungria: ["Budapest", "Debrecen", "Szeged", "Miskolc", "Pécs", "Győr"],
+  Italia: ["Roma", "Milán", "Nápoles", "Turín", "Palermo", "Génova", "Bolonia"],
+  Mexico: [
+    "Ciudad de México",
+    "Guadalajara",
+    "Monterrey",
+    "Puebla",
+    "Tijuana",
+    "León",
+    "Querétaro",
+    "Mérida",
+    "Cancún",
+    "Toluca",
+    "San Luis Potosí",
+    "Aguascalientes",
+    "Hermosillo",
+    "Chihuahua",
+    "Saltillo",
+  ],
+  "Nueva Zelanda": [
+    "Auckland",
+    "Wellington",
+    "Christchurch",
+    "Hamilton",
+    "Tauranga",
+    "Dunedin",
+  ],
+  "Paises Bajos": [
+    "Ámsterdam",
+    "Róterdam",
+    "La Haya",
+    "Utrecht",
+    "Eindhoven",
+    "Tilburgo",
+  ],
+  Panama: [
+    "Ciudad de Panamá",
+    "Colón",
+    "David",
+    "Santiago",
+    "Chitré",
+    "La Chorrera",
+  ],
+  Peru: [
+    "Lima",
+    "Arequipa",
+    "Trujillo",
+    "Chiclayo",
+    "Piura",
+    "Cusco",
+    "Iquitos",
+    "Huancayo",
+    "Tacna",
+    "Pucallpa",
+  ],
+  "Puerto Rico": [
+    "San Juan",
+    "Ponce",
+    "Mayagüez",
+    "Bayamón",
+    "Carolina",
+    "Arecibo",
+  ],
+  Uruguay: [
+    "Montevideo",
+    "Salto",
+    "Paysandú",
+    "Las Piedras",
+    "Rivera",
+    "Maldonado",
+  ],
+  Venezuela: [
+    "Caracas",
+    "Maracaibo",
+    "Valencia",
+    "Barquisimeto",
+    "Maracay",
+    "Ciudad Guayana",
+    "Maturín",
+  ],
+  Otro: ["Otra ciudad"],
 };
+
+function toApiPayload(form) {
+  return {
+    UserName: (form.email || "").trim(),
+    UserPassword: form.password,
+    EmailAddress: (form.email || "").trim(),
+    PhoneNumber: (form.phone || "").trim(),
+    FirstName: (form.firstName || "").trim(),
+    LastName: (form.lastName || "").trim(),
+    Company: (form.company || "").trim(),
+    Country: form.country,
+    City: form.city,
+    PersonType:
+      form.personType === "NATURAL" ? "persona natural" : "persona jurídica",
+    DocType: form.idType,
+    DocNumber: form.idNumber,
+    DollarPlatform: !!form.interesDolar,
+    TechnicalAnalysis: !!form.interesAnalisis,
+    TermsConditions: !!form.aceptaTyC,
+    TermsSetIcap: !!form.aceptaDatosFX,
+    TermsSecurity: !!form.aceptaDatosSecurities,
+  };
+}
 
 export default function RegisterPage() {
   const router = useRouter();
 
-  /** Estado del formulario (datos controlados) */
+  /*Estado del formulario (datos controlados)*/
   const [form, setForm] = useState({
     firstName: "", lastName: "", idType: "", idNumber: "", personType: "",
     country: "", city: "", company: "", email: "", phone: "",
@@ -68,20 +345,25 @@ export default function RegisterPage() {
     interesDolar: false, interesAnalisis: false,
     aceptaTyC: false, aceptaDatosFX: false, aceptaDatosSecurities: false,
   });
-
-  /**Mensajes de error por campo */
+  /*Mensajes de error por campo*/
   const [errors, setErrors] = useState({});
-  /**Estado de envío */
+  /*Estado de envío*/
   const [submitting, setSubmitting] = useState(false);
 
-  /** Toast (usa componente UI/Toast) */
- 
-
-  /** Toggle de visibilidad de contraseñas */
+  /*Toast flotante (éxito/error)*/
+  const [toast, setToast] = useState({
+    show: false,
+    type: "success",
+    message: "",
+  });
+  /*Toggle de visibilidad de contraseñas*/
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  /** Fortaleza de contraseña */
+  /*
+   * Evalúa la fortaleza de una contraseña.
+   * Retorna Label/color/percent para la barra visual
+   */
   function passwordStrength(pw = "") {
     const length = pw.length >= 8;
     const lower = /[a-z]/.test(pw);
@@ -103,26 +385,36 @@ export default function RegisterPage() {
     const percent = (score / 4) * 100;
     return { score, label, color, percent };
   }
-
-  /** Lanza toast */
-const pushToast = (type, message) => {
-  const config = { autoClose: 3500 }
-  if (type === "success") toast.success(message, config)
-  else if (type === "error") toast.error(message, config)
-  else toast.info(message, config)
-}
-
+  /**
+   * Muestra un toast por x ms
+   *  Guardamos el id del timeout en una propiedad del mismo function object
+   *  para poder limpiarlo entre invocaciones consecutivas.
+   */
+  const showToast = (type, message, duration = 3500) => {
+    setToast({ show: true, type, message });
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(
+      () => setToast((t) => ({ ...t, show: false })),
+      duration
+    );
+  };
 
   //------------- Helpers de formato/validación -----------------
+
+  /**Permite solo letras, acentos, espacios, apóstrofe y guion (para nombres) */
 
   const sanitizeName = (v) => v.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñÜü' -]/g, "");
   
   const digitsOnly = (v) => v.replace(/\D/g, "");
   
   const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(v);
-  const isStrongPass = (v) => /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$/.test(v);
-  const setFieldError = (name, message) => setErrors((prev) => ({ ...prev, [name]: message || undefined }));
+  /** Contraseña robusta: 8+, minúscula, mayúscula, número y simbolo */
+  const isStrongPass = (v) =>
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{12,}$/.test(v);
 
+  /** Seteo (o Limpia) el error de un campo */
+  const setFieldError = (name, message) =>
+    setErrors((prev) => ({ ...prev, [name]: message || undefined }));
   
   const validateField = (name, value, current = form) => {
     switch (name) {
@@ -157,7 +449,8 @@ const pushToast = (type, message) => {
         if (!value.trim()) return "La empresa es obligatoria."; return "";
       case "password":
         if (!value) return "La contraseña es obligatoria.";
-        if (!isStrongPass(value)) return "Mín. 8, mayúscula, minúscula, número y especial.";
+        if (!isStrongPass(value))
+          return "Mín. 12, mayúscula, minúscula, número y especial.";
         return "";
       case "confirm":
         if (!value) return "Confirma la contraseña.";
@@ -182,9 +475,11 @@ const pushToast = (type, message) => {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
+  /** Maneja cambios; normaliza valores y revalida el campo actualizado */
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
+
+    // Exclusividad entre intereses
 
     if (name === "interesDolar" || name === "interesAnalisis") {
       const updated = {
@@ -229,12 +524,11 @@ const pushToast = (type, message) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-
     if (!validateAll()) {
       pushToast("error", "Corrige los campos resaltados e inténtalo de nuevo.");
       return;
     }
-    
+
     if (!form.aceptaTyC || !form.aceptaDatosFX || !form.aceptaDatosSecurities) {
       setFieldError("policies", "Debes aceptar todos los términos y políticas.");
       pushToast("error", "Debes aceptar los términos y políticas.");
@@ -243,12 +537,77 @@ const pushToast = (type, message) => {
       setFieldError("policies", "");
     }
 
-    setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setSubmitting(false);
-    pushToast("success", "Registro enviado. Revisaremos tu información.");
-    setTimeout(() => router.push("/"), 900);
+    try {
+      setSubmitting(true);
+
+      const payload = toApiPayload(form);
+      const res = await fetch(`http://set-fx.com/api/v1/auth/users/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const raw = await res.text(); // leemos SIEMPRE como texto primero
+      let data = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        /* no JSON, está bien */
+      }
+
+      if (!res.ok) {
+        // intenta extraer errores de validación típicos
+        const candidate =
+          data?.errors ||
+          data?.validationErrors ||
+          data?.modelState ||
+          data?.detail ||
+          data?.error;
+
+        if (candidate && typeof candidate === "object") {
+          const newErrors = {};
+          for (const [apiField, msgs] of Object.entries(candidate)) {
+            const formField = API_TO_FORM[apiField] || apiField;
+            newErrors[formField] = Array.isArray(msgs)
+              ? msgs.join(" ")
+              : String(msgs);
+          }
+          setErrors((prev) => ({ ...prev, ...newErrors }));
+          const firstMsg = Object.values(newErrors)[0];
+          throw new Error(
+            firstMsg || data?.message || "No se pudo completar el registro."
+          );
+        }
+
+        // si no hay estructura de campos, muestra el mensaje plano
+        throw new Error(
+          data?.message || raw || "No se pudo completar el registro."
+        );
+      }
+      // ---------------------------------------------------------
+
+      showToast("success", "Cuenta creada. Revisa tu correo para activar.");
+      setTimeout(() => router.push("/"), 900);
+
+      // const data = await res.json().catch(() => ({}));
+
+      // if (!res.ok) {
+      //   throw new Error(data?.message || "No se pudo completar el registro.");
+      // }
+
+      // showToast("success", "Cuenta creada. Revisa tu correo para activar.");
+      // setTimeout(() => router.push("/"), 900);
+    } catch (err) {
+      showToast("error", err.message || "Error inesperado");
+    } finally {
+      setSubmitting(false);
+      console.log(toApiPayload(form));
+    }
   };
+  /** Lista de ciudades del pais actual (si aplica) */
 
   const citiesForCountry = CITIES_BY_COUNTRY[form.country] || null;
 
@@ -263,14 +622,22 @@ const pushToast = (type, message) => {
         <div className="grid grid-cols-1 lg:grid-cols-5">
           {/* columna de lo logo */}
           <div className="lg:col-span-2 flex items-center justify-center p-5 lg:p-6 bg-[#1f1f1f] border-b border-gray-700 lg:border-b-0 lg:border-r">
-            <img src="/logoSet.png" alt="SET ICAP Logo" className="w-36 sm:w-44 lg:w-52 h-auto" />
+            <a href="/">
+              <img
+                src="/logoSet.png"
+                alt="SET ICAP Logo"
+                className="w-36 sm:w-44 lg:w-52 h-auto"
+              />
+            </a>
           </div>
 
           {/* Formulario */}
           <div className="lg:col-span-3 p-4 sm:p-5 flex flex-col max-h-[88vh]">
-            <h2 className="text-white text-xl font-semibold mb-1">Registro</h2>
+            <h2 className="text-white text-xl font-bold mb-1 text-center">
+              Registrate y solicita una Demo
+            </h2>
             <p className="text-gray-400 text-[11px] mb-2">
-              Completa el formulario para crear tu cuenta.
+              ¡Únete a SET-ICAP | FX!. Vamos a configurar tu cuenta.
             </p>
 
             <form onSubmit={handleSubmit} noValidate className="relative flex-1 flex flex-col min-h-0">
@@ -289,7 +656,10 @@ const pushToast = (type, message) => {
                     {errors.firstName && <p className="mt-1 text-xs text-red-400">{errors.firstName}</p>}
                   </div>
                   <div>
-                    <label className="text-gray-300 text-xs block mb-0.5">- Apellido</label>
+
+                    <label className="text-gray-300 text-sm block mb-1">
+                      - Apellido
+                    </label>
                     <input
                       name="lastName" value={form.lastName} onChange={onChange} onBlur={onBlur}
                       type="text" required placeholder="Apellido" autoComplete="family-name"
@@ -310,10 +680,12 @@ const pushToast = (type, message) => {
                       className={`${inputBase} ${errors.idType && "border-red-500"}`}
                     >
                       <option value="">Seleccione</option>
-                      <option value="CC">Cédula</option>
-                      <option value="CE">Cédula Extranjería</option>
-                      <option value="NIT">NIT</option>
-                      <option value="PAS">Pasaporte</option>
+                      <option value="cédula ciudadanía">Cédula</option>
+                      <option value="cédula extranjería">
+                        Cédula Extranjería
+                      </option>
+                      <option value="nit">NIT</option>
+                      <option value="pasaporte">Pasaporte</option>
                     </select>
                     {errors.idType && <p className="mt-1 text-xs text-red-400">{errors.idType}</p>}
                   </div>
@@ -529,7 +901,10 @@ const pushToast = (type, message) => {
 
               {/* FOOTER STICKY */}
               <div className="-mx-5 sm:-mx-6 sticky bottom-0 bg-[#1f1f1f] border-t border-gray-700 px-5 sm:px-6 pt-1.5 pb-1.5">
-                <button className="w-full bg-[#1f4e85] text-white py-1.5 text-sm rounded-sm hover:bg-[#173861] transition-colors disabled:opacity-60">
+                <button
+                  className="w-full bg-[#1f4e85] text-white py-1.5 text-sm rounded-sm hover:bg-[#173861] transition-colors disabled:opacity-60"
+                  disabled={submitting}
+                >
                   {submitting ? "Registrando..." : "Registrarse"}
                 </button>
                 <div className="mt-1 text-center">

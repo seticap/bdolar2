@@ -25,8 +25,6 @@ export const WebSocketDataProvider = ({ children }) => {
         webSocketServices.addListener((data) => {
           try {
             const parsed = typeof data === "string" ? JSON.parse(data) : data;
-            // console.log(parsed.id)
-            // console.log(parsed)
 
             if (!parsed || !parsed.id) return;
             if (
