@@ -4,11 +4,11 @@ import NavBar from "./components/NavBar";
 import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { SectionCards, SectionCardsRight } from "./components/section-cards";
-import PromoPage from "./components/PromoPage";
 import InfoPage from "./components/InfoPage";
 import FooterPage from "./components/Footer";
 import { useWebSocketData } from "./services/WebSocketDataProvider";
 import DollarChart from "./components/DollarChart";
+import Carrousel from "./components/Carrousel";
 
 const LandingPage = () => {
   const { dataById } = useWebSocketData();
@@ -17,8 +17,9 @@ const LandingPage = () => {
   return (
     <>
       <NavBar />
+      <Carrousel />
       <div className="bg-backgroundtwo">
-        <div className="grid grid-cols-1 xl:grid-cols-8 lg:grid-cols-4 gap-6 w-full mx-auto p-1 py-6">
+        <div className="grid grid-cols-1 xl:grid-cols-8 lg:grid-cols-4 gap-6 w-full mx-auto p-1">
           <div className="xl:col-span-2 lg:col-span-1">
             <SectionCards />
           </div>
@@ -51,7 +52,6 @@ const LandingPage = () => {
         </div>
       </div>
 
-      <PromoPage />
       <InfoPage />
       <FooterPage />
     </>

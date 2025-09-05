@@ -308,29 +308,6 @@ const CITIES_BY_COUNTRY = {
   Otro: ["Otra ciudad"],
 };
 
-function toApiPayload(form) {
-  return {
-    UserName: (form.email || "").trim(),
-    UserPassword: form.password,
-    EmailAddress: (form.email || "").trim(),
-    PhoneNumber: (form.phone || "").trim(),
-    FirstName: (form.firstName || "").trim(),
-    LastName: (form.lastName || "").trim(),
-    Company: (form.company || "").trim(),
-    Country: form.country,
-    City: form.city,
-    PersonType:
-      form.personType === "NATURAL" ? "persona natural" : "persona jurídica",
-    DocType: form.idType,
-    DocNumber: form.idNumber,
-    DollarPlatform: !!form.interesDolar,
-    TechnicalAnalysis: !!form.interesAnalisis,
-    TermsConditions: !!form.aceptaTyC,
-    TermsSetIcap: !!form.aceptaDatosFX,
-    TermsSecurity: !!form.aceptaDatosSecurities,
-  };
-}
-
 export default function RegisterPage() {
   const router = useRouter();
 
@@ -428,8 +405,7 @@ export default function RegisterPage() {
   const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(v);
   /** Contraseña robusta: 8+, minúscula, mayúscula, número y simbolo */
   const isStrongPass = (v) =>
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{12,}$/.test(v);
-
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$/.test(v);
   /** Seteo (o Limpia) el error de un campo */
   const setFieldError = (name, message) =>
     setErrors((prev) => ({ ...prev, [name]: message || undefined }));
@@ -478,7 +454,7 @@ export default function RegisterPage() {
       case "password":
         if (!value) return "La contraseña es obligatoria.";
         if (!isStrongPass(value))
-          return "Mín. 12, mayúscula, minúscula, número y especial.";
+          return "Mín. 8, mayúscula, minúscula, número y especial.";
         return "";
       case "confirm":
         if (!value) return "Confirma la contraseña.";
@@ -573,6 +549,7 @@ export default function RegisterPage() {
       showToast("error", "Corrige los campos resaltados e inténtalo de nuevo.");
       return;
     }
+    // Todas las politicas son obligatorias
     if (!form.aceptaTyC || !form.aceptaDatosFX || !form.aceptaDatosSecurities) {
       setFieldError(
         "policies",
@@ -584,75 +561,10 @@ export default function RegisterPage() {
       setFieldError("policies", "");
     }
 
-    try {
-      setSubmitting(true);
-
-      const payload = toApiPayload(form);
-      const res = await fetch(`http://set-fx.com/api/v1/auth/users/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const raw = await res.text(); // leemos SIEMPRE como texto primero
-      let data = {};
-      try {
-        data = raw ? JSON.parse(raw) : {};
-      } catch {
-        /* no JSON, está bien */
-      }
-
-      if (!res.ok) {
-        // intenta extraer errores de validación típicos
-        const candidate =
-          data?.errors ||
-          data?.validationErrors ||
-          data?.modelState ||
-          data?.detail ||
-          data?.error;
-
-        if (candidate && typeof candidate === "object") {
-          const newErrors = {};
-          for (const [apiField, msgs] of Object.entries(candidate)) {
-            const formField = API_TO_FORM[apiField] || apiField;
-            newErrors[formField] = Array.isArray(msgs)
-              ? msgs.join(" ")
-              : String(msgs);
-          }
-          setErrors((prev) => ({ ...prev, ...newErrors }));
-          const firstMsg = Object.values(newErrors)[0];
-          throw new Error(
-            firstMsg || data?.message || "No se pudo completar el registro."
-          );
-        }
-
-        // si no hay estructura de campos, muestra el mensaje plano
-        throw new Error(
-          data?.message || raw || "No se pudo completar el registro."
-        );
-      }
-      // ---------------------------------------------------------
-
-      showToast("success", "Cuenta creada. Revisa tu correo para activar.");
-      setTimeout(() => router.push("/"), 900);
-
-      // const data = await res.json().catch(() => ({}));
-
-      // if (!res.ok) {
-      //   throw new Error(data?.message || "No se pudo completar el registro.");
-      // }
-
-      // showToast("success", "Cuenta creada. Revisa tu correo para activar.");
-      // setTimeout(() => router.push("/"), 900);
-    } catch (err) {
-      showToast("error", err.message || "Error inesperado");
-    } finally {
-      setSubmitting(false);
-      console.log(toApiPayload(form));
-    }
+    setSubmitting(true);
+    await new Promise((r) => setTimeout(r, 800));
+    showToast("success", "Registro enviado. Revisaremos tu información.");
+    setTimeout(() => router.push("/"), 900);
   };
   /** Lista de ciudades del pais actual (si aplica) */
   const citiesForCountry = CITIES_BY_COUNTRY[form.country] || null;
@@ -768,9 +680,7 @@ focus:ring-0 focus:border-gray-400";
                     >
                       <option value="">Seleccione</option>
                       <option value="cédula ciudadanía">Cédula</option>
-                      <option value="cédula extranjería">
-                        Cédula Extranjería
-                      </option>
+                      <option value="cedula extranjería">Cédula Extranjería</option>
                       <option value="nit">NIT</option>
                       <option value="pasaporte">Pasaporte</option>
                     </select>
@@ -1199,10 +1109,7 @@ focus:ring-0 focus:border-gray-400";
               <br></br>
               {/* FOOTER STICKY: (boton + link) */}
               <div className="-mx-5 sm:-mx-6 sticky bottom-0 bg-[#1f1f1f] border-t border-gray-700 px-5 sm:px-6 pt-1.5 pb-1.5">
-                <button
-                  className="w-full bg-[#1f4e85] text-white py-1.5 text-sm rounded-sm hover:bg-[#173861] transition-colors disabled:opacity-60"
-                  disabled={submitting}
-                >
+                <button className="w-full bg-[#1f4e85] text-white py-1.5 text-sm rounded-sm hover:bg-[#173861] transition-colors disabled:opacity-60">
                   {submitting ? "Registrando..." : "Registrarse"}
                 </button>
                 <div className="mt-1 text-center">
