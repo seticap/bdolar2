@@ -1,5 +1,6 @@
 import "./globals.css";
 import { WebSocketDataProvider } from "./services/WebSocketDataProvider";
+import { InfoDataProvider } from "./services/InfoDataProvider";
 
 export const metadata = {
   title: "Dollar Set-FX",
@@ -8,15 +9,17 @@ export const metadata = {
   },
 };
 
-
 export default function RootLayout({ children }) {
   return (
-  <html lang="es" suppressHydrationWarning>
-      <body className="min-h-screen flex flex-col">
-        <WebSocketDataProvider>
-          <main className="flex-1 w-full text-white">{children}</main>
-        </WebSocketDataProvider>
-      </body>
-    </html>
+    <InfoDataProvider>
+      <WebSocketDataProvider>
+        <html lang="es" suppressHydrationWarning>
+          <body className="min-h-screen flex flex-col">
+            <main className="flex-1 w-full text-white">{children} </main>
+          </body>
+        </html>
+      </WebSocketDataProvider>
+    </InfoDataProvider>
+
   );
 }
