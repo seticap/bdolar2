@@ -1,7 +1,7 @@
 'use client';
 
 import Footer from '../../components/Footer'
-import Estadisticas from '../../components/Estadisticas';
+
 
 export default function spotPage() {
   return (
