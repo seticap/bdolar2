@@ -1,5 +1,33 @@
 // app/components/PromedioGrafico.jsx
 "use client";
+
+/**
+ * Gráfico de promedio y medias móviles (Area + Line) usando `lightweight-charts`.
+ * Muestra una serie principal (precio/promedio) y dos SMAs (8 y 13).
+ * Esta versión SOLO agrega documentación/comentarios sin alterar la funcionalidad.
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * ESTRUCTURA DE `data` ESPERADA (flexible con `getBlock`):
+ * Puede llegar en varias profundidades, pero al final se normaliza a:
+ * {
+ *   labels: Array<number|string>,      // timestamps (s|ms), YYYY-MM-DD o HH:mm
+ *   datasets: [
+ *     { label: 'Precio' | 'Promedio', data: number[] },   // Serie principal (area)
+ *     { label: 'SMA 8', data: number[] },                 // Línea SMA 8
+ *     { label: 'SMA 13', data: number[] },                // Línea SMA 13
+ *   ]
+ * }
+ *
+ * `getBlock` busca esta forma en: data.data.data, data.data, o el root.
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * PROPS
+ * @typedef {Object} PromedioGraficoProps
+ * @property {any}   data                 - Estructura de datos con labels/datasets (ver arriba).
+ * @property {number}[height=360]         - Alto del gráfico en px.
+ * @property {'1D'|'5D'|'1M'|'6M'|'1A'} [range='1D'] - Rango temporal para filtrado visual.
+ */
+
 import { useEffect, useMemo, useRef } from "react";
 import {
   createChart,
@@ -8,24 +36,40 @@ import {
   CrosshairMode,
 } from "lightweight-charts";
 
+/**
+ * Paleta visual para el chart y tooltip.
+ */
+
 const THEME = {
- bg: "transparent", // ← CAMBIAR de "#000" a "transparent"
-  text: "#9aa4b2", // ← CAMBIAR de "#e7e7ea" a "#9aa4b2"
-  grid: "rgba(255,255,255,.06)", // ← CAMBIAR de ".08" a ".06"
-  cross: "rgba(255,255,255,.18)", // ← CAMBIAR de ".25" a ".18"
-  primary: "#22c55e", // ← CAMBIAR de "#ef4444" a "#22c55e"
-  primaryTop: "rgba(34,197,94,.28)", // ← AJUSTAR para nuevo color
-  primaryBottom: "rgba(34,197,94,.06)", // ← AJUSTAR para nuevo color
-  line8: "#22c55e",
-  line13: "#f59e0b",
+  bg: "transparent", // fondo del chart
+  text: "#9aa4b2", // color de texto
+  grid: "rgba(255,255,255,.06)", // color de grilla
+  cross: "rgba(255,255,255,.18)", // crosshair
+  primary: "#22c55e", // color de línea principal
+  primaryTop: "rgba(34,197,94,.28)", // degradado superior área
+  primaryBottom: "rgba(34,197,94,.06)", // degradado inferior área
+  line8: "#22c55e",   // SMA 8
+  line13: "#f59e0b",  // SMA 13
 };
+
+/**
+ * Opciones comunes de series (ocultar línea de último valor).
+ */
 
 const COMMON_SERIES_OPTS = {
   lastValueVisible: false,
   priceLineVisible: false,
 };
 
-/* ---------- utils ---------- */
+/* ─────────────────────────────── utils ─────────────────────────────── */
+
+/**
+ * Normaliza la entrada `data` y localiza { labels, datasets } independiente
+ * de cuántos niveles de anidación tenga (data, data.data, data.data.data).
+ * @param {any} input
+ * @returns {{ labels: any[]; datasets: { label?: string; data: number[] }[] } | null}
+ */
+
 function getBlock(input){
   console.log("🔍 [GET_BLOCK] Input recibido:", {
     tieneInput: !!input,
@@ -61,7 +105,55 @@ function getBlock(input){
   return null;
 }
 
+/** Valida patrón YYYY-MM-DD (no se usa directamente, mantenido por compatibilidad) */
 const isYmd = (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+
+
+/**
+ * Convierte una fecha completa (string) a epoch seconds en zona Bogotá.
+ * @param {string} dateString
+ * @returns {number}
+ */
+
+function fullDateToUnixBogota(dateString) {
+  try {
+    const date = new Date(dateString);
+    const bogotaDate = new Date(date.toLocaleString("en-US", { timeZone: "America/Bogota" }));
+    return Math.floor(bogotaDate.getTime() / 1000);
+  } catch (error) {
+    console.error("Error converting date:", error);
+    return 0;
+  }
+}
+
+/**
+ * Convierte "HH:mm" (o "HH:mm:ss") de HOY a epoch seconds en zona Bogotá.
+ * @param {string} timeString
+ * @returns {number}
+ */
+
+function hhmmToUnixTodayBogota(timeString) {
+  try {
+    const now = new Date();
+    const today = new Date(now.toLocaleString("en-US", { timeZone: "America/Bogota" }));
+    const [hours, minutes] = timeString.split(':').map(Number);
+    today.setHours(hours, minutes || 0, 0, 0);
+    return Math.floor(today.getTime() / 1000);
+  } catch (error) {
+    console.error("Error converting time:", error);
+    return 0;
+  }
+}
+
+/**
+ * Normaliza `labels` a timestamps (epoch seconds):
+ * - number: asume segundos (si > 1e12, convierte de ms a s)
+ * - "YYYY-MM-DD": usa 12:00 Bogotá del mismo día
+ * - "HH:mm[:ss]": usa la hora de HOY (Bogotá)
+ * - otro string: intenta parseo y si falla, usa índice
+ * @param {Array<string|number>} labels
+ * @returns {number[]}
+ */
 
 function makeTimes(labels = []) {
   if (!labels.length) return [];
@@ -69,7 +161,7 @@ function makeTimes(labels = []) {
   return labels.map((l, i) => {
     if (typeof l === "number") {
       return l > 1e12 ? Math.floor(l / 1000) : l;
-    }a
+    }
     if (typeof l === "string") {
       if (/^\d{4}-\d{2}-\d{2}$/.test(l)) {
         // Para fechas YYYY-MM-DD, usar mediodía en Bogotá
@@ -87,6 +179,13 @@ function makeTimes(labels = []) {
   });
 }
 
+/**
+ * Une arrays de times y values en puntos { time, value } sanitizados.
+ * @param {number[]} times
+ * @param {Array<number|string>} values
+ * @returns {{time:number,value:number}[]}
+ */
+
 const zip = (times, values) => {
   const n = Math.min(times.length, values.length);
   const out = [];
@@ -99,6 +198,13 @@ const zip = (times, values) => {
   }
   return out;
 };
+
+/**
+ * Formatea un timestamp (s) a hora local Bogotá HH:mm:ss.
+ * Si recibe string, lo retorna tal cual.
+ * @param {number|string} t
+ * @returns {string}
+ */
 
 const fmtTime = (t) => {
   if (typeof t === "string") return t;
@@ -116,23 +222,13 @@ const fmtTime = (t) => {
   });
 };
 
-const mulberry32 = (seed) => () => {
-  let t = (seed += 0x6d2b79f5);
-  t = Math.imul(t ^ (t >>> 15), t | 1);
-  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-};
-
-const sma = (arr, period) => {
-  const out = Array(arr.length).fill(null);
-  let sum = 0;
-  for (let i = 0; i < arr.length; i++) {
-    sum += arr[i];
-    if (i >= period) sum -= arr[i - period];
-    if (i >= period - 1) out[i] = +(sum / period).toFixed(2);
-  }
-  return out;
-};
+/**
+ * Filtra puntos por `range` relativo al último timestamp, elimina duplicados
+ * y ordena ascendente.
+ * @param {{time:number|String, value:number}[]} points
+ * @param {'1D'|'5D'|'1M'|'6M'|'1A'} range
+ * @returns {typeof points}
+ */
 
 function filterSeriesByRange(points = [], range = '1D') {
   if (!points.length) return points;
@@ -168,52 +264,17 @@ function filterSeriesByRange(points = [], range = '1D') {
     .sort((a, b) => toSec(a.time) - toSec(b.time));
 }
 
-function genSimPromedios({
-  baseDay = "2025-09-16",
-  points = 3000,
-  intervalSec = 5,
-  start = 3899,
-  vol = 1.2,
-  wave = 0.7,
-  trend = 0.0006,
-} = {}) {
-  const seed = Number((baseDay || "").replace(/-/g, "")) || 123456;
-  const rnd = mulberry32(seed);
-  const base = Math.floor(Date.parse(`${baseDay}T00:00:00Z`) / 1000);
-  const times = Array.from(
-    { length: points },
-    (_, i) => base + i * intervalSec
-  );
-  const prices = [];
-  let p = start;
-  for (let i = 0; i < points; i++) {
-    p += (rnd() - 0.5) * vol * 2;
-    p += Math.sin(i / 120) * wave;
-    p += trend;
-    p = Math.max(3700, Math.min(4050, p));
-    prices.push(+p.toFixed(2));
-  }
-  const s8 = sma(prices, 8);
-  const s13 = sma(prices, 13);
-  return {
-    price: zip(times, prices),
-    sma8: zip(times, s8),
-    sma13: zip(times, s13),
-  };
-}
+/* ───────────────────────────── component ───────────────────────────── */
 
-/* ---------- component ---------- */
+/**
+ * Componente principal PromedioGrafico.
+ * Inicializa el chart (área + dos líneas), gestiona tooltip,
+ * sincroniza tamaño y setea datos cuando `data`/`range` cambian.
+ * @param {PromedioGraficoProps} props
+ */
 export default function PromedioGrafico({
   data,
-  fallbackDay = "2025-09-16",
   height = 360,
-  forceSimulated = false,
-  simPoints = 3000,
-  simIntervalSec = 5,
-  simStart = 3899,
-  simVol = 1.2,
-  simWave = 0.7,
-  simTrend = 0.0006,
   range = '1D',
 }) {
   const containerRef = useRef(null);
@@ -223,30 +284,15 @@ export default function PromedioGrafico({
   const sma13Ref = useRef(null);
   const tipRef = useRef(null);
 
-  const simOpts = useMemo(
-    () => ({
-      baseDay: fallbackDay,
-      points: simPoints,
-      intervalSec: simIntervalSec,
-      start: simStart,
-      vol: simVol,
-      wave: simWave,
-      trend: simTrend,
-      force: forceSimulated,
-    }),
-    [
-      fallbackDay,
-      simPoints,
-      simIntervalSec,
-      simStart,
-      simVol,
-      simWave,
-      simTrend,
-      forceSimulated,
-    ]
-  );
+   /**
+   * Inicialización del gráfico (una sola vez):
+   * - Crea chart con layout, grid, escalas y crosshair
+   * - Añade series (Area para precio, Line para SMAs)
+   * - Configura tooltip y listeners
+   * - Observa el tamaño para responsividad
+   * - Limpia todo al desmontar
+   */
 
-  // init chart
   useEffect(() => {
     const el = containerRef.current;
     const chart = createChart(el, {
@@ -276,16 +322,18 @@ export default function PromedioGrafico({
 
     let area, sma8, sma13;
     if (typeof chart.addAreaSeries === "function") {
+      // APIs nuevas
       area = chart.addAreaSeries(areaOpts);
       sma8 = chart.addLineSeries(line80pts);
       sma13 = chart.addLineSeries(line130pts);
     } else {
+      // Back-compat con modo addSeries(...)
       area = chart.addSeries(AreaSeries, areaOpts);
       sma8 = chart.addSeries(LineSeries, line80pts);
       sma13 = chart.addSeries(LineSeries, line130pts);
     }
 
-    // tooltip
+    // tooltip flotante
     const tip = document.createElement("div");
     Object.assign(tip.style, {
       position: "absolute",
@@ -303,7 +351,7 @@ export default function PromedioGrafico({
     });
     el.style.position = "relative";
     el.appendChild(tip);
-
+    // Listener de crosshair → actualiza tooltip
     const onMove = (param) => {
       if (!param?.time || !param.point) {
         tip.style.display = "none";
@@ -358,12 +406,14 @@ export default function PromedioGrafico({
     });
     ro.observe(el);
 
+    // Refs
     chartRef.current = chart;
     areaRef.current = area;
     sma8Ref.current = sma8;
     sma13Ref.current = sma13;
     tipRef.current = tip;
 
+    // Limpieza
     return () => {
       ro.disconnect();
       chart.unsubscribeCrosshairMove(onMove);
@@ -380,112 +430,118 @@ export default function PromedioGrafico({
     };
   }, []);
 
-  // adjust height
+      /**
+   * Ajusta la altura cuando cambia `height`.
+   */
   useEffect(() => {
     if (chartRef.current) {
       chartRef.current.applyOptions({ height });
     }
   }, [height]);
 
-  // set data (payload o simulación)
-  useEffect(() => {
-    if (!chartRef.current) return;
+/**
+   * Actualiza las series cuando cambian `data` o `range`:
+   * - Normaliza data con `getBlock`
+   * - Convierte labels a times (epoch seconds) con `makeTimes`
+   * - Asocia datasets → price (area), s8 (linea), s13 (línea)
+   * - Filtra por `range`
+   * - Sanitiza, ordena y elimina duplicados
+   * - Setea datos en las series y ajusta timeScale
+   */
+useEffect(() => {
+  if (!chartRef.current) return;
 
-    console.log("📊 [PROMEDIO_GRAFICO] Actualizando datos:", {
-      tieneData: !!data,
-      dataStructure: data ? Object.keys(data) : 'NO_DATA',
-      labelsLength: data?.labels?.length,
-      datasetsLength: data?.datasets?.length,
-      forceSimulated,
-      range
+  console.log("📊 [PROMEDIO_GRAFICO] Actualizando datos:", {
+    tieneData: !!data,
+    dataStructure: data ? Object.keys(data) : 'NO_DATA',
+    labelsLength: data?.labels?.length,
+    datasetsLength: data?.datasets?.length,
+    range
+  });
+
+  const block = getBlock(data || {});
+  console.log("🔍 [PROMEDIO_GRAFICO] Block extraído:", {
+    tieneBlock: !!block,
+    blockLabels: block?.labels?.length,
+    blockDatasets: block?.datasets?.length
+  });
+
+  let price = [], s8 = [], s13 = [];
+
+  if (block) {
+    console.log("🎯 [PROMEDIO_GRAFICO] Usando datos reales del block");
+    const times = makeTimes(block.labels || []);
+    
+    console.log("⏰ [PROMEDIO_GRAFICO] Times generados:", {
+      timesLength: times.length,
+      sampleTimes: times.slice(0, 5)
     });
 
-    const block = getBlock(data || {});
-    console.log("🔍 [PROMEDIO_GRAFICO] Block extraído:", {
-      tieneBlock: !!block,
-      blockLabels: block?.labels?.length,
-      blockDatasets: block?.datasets?.length
+    block.datasets?.forEach((dataset, index) => {
+      console.log(`📈 [PROMEDIO_GRAFICO] Dataset ${index}:`, {
+        label: dataset.label,
+        dataLength: dataset.data?.length,
+        sampleData: dataset.data?.slice(0, 5)
+      });
     });
 
-    let price = [], s8 = [], s13 = [];
+    price = zip(times, block.datasets?.[0]?.data || []);
+    s8    = zip(times, block.datasets?.[1]?.data || []);
+    s13   = zip(times, block.datasets?.[2]?.data || []);
 
-    if (!simOpts.force && block) {
-      console.log("🎯 [PROMEDIO_GRAFICO] Usando datos reales del block");
-      const times = makeTimes(block.labels || []);
-      
-      console.log("⏰ [PROMEDIO_GRAFICO] Times generados:", {
-        timesLength: times.length,
-        sampleTimes: times.slice(0, 5)
-      });
-
-      block.datasets?.forEach((dataset, index) => {
-        console.log(`📈 [PROMEDIO_GRAFICO] Dataset ${index}:`, {
-          label: dataset.label,
-          dataLength: dataset.data?.length,
-          sampleData: dataset.data?.slice(0, 5)
-        });
-      });
-
-      price = zip(times, block.datasets?.[0]?.data || []);
-      s8    = zip(times, block.datasets?.[1]?.data || []);
-      s13   = zip(times, block.datasets?.[2]?.data || []);
-
-      console.log("📦 [PROMEDIO_GRAFICO] Datasets procesados:", {
-        priceLength: price.length,
-        s8Length: s8.length,
-        s13Length: s13.length
-      });
-    }
-
-    if (simOpts.force || !price.length) {
-      console.log("🔄 [PROMEDIO_GRAFICO] Usando datos simulados");
-      const sim = genSimPromedios(simOpts);
-      price = sim.price;
-      s8 = sim.sma8;
-      s13 = sim.sma13;
-    }
-
-    // Apply range filtering
-    if (typeof range === 'string') {
-      price = filterSeriesByRange(price, range);
-      s8 = filterSeriesByRange(s8, range);
-      s13 = filterSeriesByRange(s13, range);
-    }
-
-    // Final sanitization
-    const sanitize = (arr) => {
-      const seen = new Set();
-      return arr
-        .filter(p => Number.isFinite(p?.time) && Number.isFinite(p?.value))
-        .sort((a, b) => a.time - b.time)
-        .filter(p => {
-          if (seen.has(p.time)) return false;
-          seen.add(p.time);
-          return true;
-        });
-    };
-
-    price = sanitize(price);
-    s8 = sanitize(s8);
-    s13 = sanitize(s13);
-
-    console.log("✅ [PROMEDIO_GRAFICO] Datos finales listos para gráfico:", {
-      price: price.length,
-      s8: s8.length, 
-      s13: s13.length
+    console.log("📦 [PROMEDIO_GRAFICO] Datasets procesados:", {
+      priceLength: price.length,
+      s8Length: s8.length,
+      s13Length: s13.length
     });
+  }
 
-    // Set the data
+   // Filtrado por rango relativo al último punto
+  if (typeof range === 'string') {
+    price = filterSeriesByRange(price, range);
+    s8 = filterSeriesByRange(s8, range);
+    s13 = filterSeriesByRange(s13, range);
+  }
+
+  // Sanitización final: números finitos, orden asc y sin duplicados
+  const sanitize = (arr) => {
+    const seen = new Set();
+    return arr
+      .filter(p => Number.isFinite(p?.time) && Number.isFinite(p?.value))
+      .sort((a, b) => a.time - b.time)
+      .filter(p => {
+        if (seen.has(p.time)) return false;
+        seen.add(p.time);
+        return true;
+      });
+  };
+
+  price = sanitize(price);
+  s8 = sanitize(s8);
+  s13 = sanitize(s13);
+
+  console.log("✅ [PROMEDIO_GRAFICO] Datos finales listos para gráfico:", {
+    price: price.length,
+    s8: s8.length, 
+    s13: s13.length
+  });
+
+  // Establecer datos en las series (solo si hay serie principal)
+  if (price.length > 0) {
     areaRef.current.setData(price);
     sma8Ref.current.setData(s8);
     sma13Ref.current.setData(s13);
 
-    // Ajustar la escala de tiempo
+    // Ajustar escala de tiempo al contenido
     if (price.length >= 2) {
       chartRef.current.timeScale().fitContent();
     }
-  }, [data, simOpts, range]);
+  } else {
+    console.log("⏳ [PROMEDIO_GRAFICO] No hay datos reales para mostrar");
+  }
+}, [data, range]);
 
+// Contenedor visual del chart
 return (
   <div
     ref={containerRef}

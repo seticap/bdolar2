@@ -1,147 +1,132 @@
-// app/components/BollingerGrafico.jsx
+// app/components/BollingerGrafico.jsx - VERSIÓN CORREGIDA
 "use client";
+
 import { useEffect, useRef } from "react";
 import { createChart, LineSeries, CrosshairMode } from "lightweight-charts";
 import { useWebSocketDataGrafico } from "../services/WebSocketDataProviderGraficos";
 
-// CAMBIAR ESTO:
 const THEME = {
-  bg: 'transparent', // ← CAMBIAR de '#000' a 'transparent'
-  text: '#9aa4b2',
-  grid: 'rgba(255,255,255,.06)',
-  cross: 'rgba(255,255,255,.18)',
-  price: '#ef4444',
-  sma8:  '#22c55e',
-  band:  'rgba(255,255,255,.35)',
+  bg: "transparent",
+  text: "#9aa4b2",
+  grid: "rgba(255,255,255,.06)",
+  cross: "rgba(255,255,255,.18)",
+  price: "#ef4444",
+  sma: "#22c55e",
+  upperBand: "rgba(59, 130, 246, 0.6)",
+  lowerBand: "rgba(59, 130, 246, 0.6)",
 };
 
-const COMMON_SERIES_OPTS = { lastValueVisible:false, priceLineVisible:false };
+const COMMON_SERIES_OPTS = { lastValueVisible: false, priceLineVisible: false };
 
-
-/* ---------- helpers ---------- */
-function getBlock(input){
-  const p = input ?? {};
-  const a = p?.data?.data?.data ?? p?.data?.data ?? p?.data ?? p;
-  if (a?.labels && a?.datasets) return a;
-  if (a?.data?.labels && a?.data?.datasets) return a.data;
-  return null;
-}
-
-function labelsToTimes(labels = [], baseDay = '2025-09-16') {
-  const base00 = Math.floor(Date.parse(`${baseDay}T00:00:00Z`) / 1000);
-  const seen = new Map();
-  return labels.map((lab, i) => {
-    if (typeof lab === 'number') return lab > 1e12 ? Math.floor(lab / 1000) : lab;
-    if (typeof lab !== 'string') return base00 + i * 60;
-
-    const s = lab.trim();
-    if (/^\d{4}-\d{2}-\d{2}(?:\s+\d{2}:\d{2}(?::\d{2})?)$/.test(s)) {
-      const iso = s.replace(' ', 'T');
-      return Math.floor(new Date((iso.length === 16 ? iso + ':00' : iso) + 'Z').getTime() / 1000);
-    }
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-      return Math.floor(new Date(s + 'T00:00:00Z').getTime() / 1000);
-    }
-    if (/^\d{2}:\d{2}(?::\d{2})?$/.test(s)) {
-      const hhmmss = s.length === 5 ? s + ':00' : s;
-      const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
-      const key = hhmmss;
-      const dup = (seen.get(key) || 0) + 1; seen.set(key, dup);
-      return Math.floor(new Date(`${day}T${hhmmss}Z`).getTime() / 1000) + (dup - 1);
-    }
-    const t = Math.floor(new Date(s).getTime() / 1000);
-    return Number.isFinite(t) ? t : base00 + i * 60;
-  });
-}
-
-// 🔥 FUNCIÓN MEJORADA: Muestra hora exacta en Bogotá
-const fmtTime = (t) => {
-  if (typeof t === 'string') return t;
+// Función para ordenar y eliminar datos duplicados por timestamp
+const sortAndDeduplicateData = (data) => {
+  if (!Array.isArray(data) || data.length === 0) return [];
   
-  const d = new Date((Number(t) || 0) * 1000);
-  if (Number.isNaN(d.getTime())) return '';
+  // Ordenar por tiempo (ascendente)
+  const sorted = [...data].sort((a, b) => a.time - b.time);
   
-  // Formatear en hora de Bogotá con minutos y segundos exactos
-  return d.toLocaleTimeString('es-CO', {
-    timeZone: 'America/Bogota',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
+  // Eliminar duplicados por timestamp
+  const uniqueData = [];
+  const seenTimestamps = new Set();
+  
+  for (const item of sorted) {
+    if (!seenTimestamps.has(item.time)) {
+      seenTimestamps.add(item.time);
+      uniqueData.push(item);
+    } else {
+      console.warn(`⚠️ [DEDUPE] Eliminando timestamp duplicado: ${item.time}`);
+    }
+  }
+  
+  console.log(`✅ [DEDUPE] De ${data.length} a ${uniqueData.length} puntos únicos`);
+  return uniqueData;
+};
+
+// Función para diagnosticar problemas de orden en los datos
+const diagnoseDataOrder = (data, seriesName = "unknown") => {
+  if (!Array.isArray(data)) {
+    console.warn(`❌ [DIAGNOSE_${seriesName}] Datos no son un array`);
+    return;
+  }
+
+  let issues = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i].time < data[i - 1].time) {
+      console.warn(`⚠️ [DIAGNOSE_${seriesName}] Datos desordenados en índice ${i}: ${data[i].time} < ${data[i - 1].time}`);
+      issues++;
+    }
+    if (data[i].time === data[i - 1].time) {
+      console.warn(`⚠️ [DIAGNOSE_${seriesName}] Timestamp duplicado en índice ${i}: ${data[i].time}`);
+      issues++;
+    }
+  }
+
+  if (issues === 0) {
+    console.log(`✅ [DIAGNOSE_${seriesName}] Datos correctamente ordenados`);
+  } else {
+    console.warn(`❌ [DIAGNOSE_${seriesName}] Se encontraron ${issues} problemas de orden`);
+  }
+};
+
+// Función para convertir HH:mm a timestamp de hoy en Bogotá
+const hhmmToUnixTodayBogota = (hhmm) => {
+  try {
+    const [hh, mm] = String(hhmm).split(":").map(Number);
+    if (!Number.isFinite(hh) || !Number.isFinite(mm) || hh < 0 || hh > 23 || mm < 0 || mm > 59) {
+      return null;
+    }
+
+    // Obtener la fecha actual en Bogotá
+    const now = new Date();
+    const todayBogota = new Date(
+      now.toLocaleString("en-US", {
+        timeZone: "America/Bogota",
+      })
+    );
+
+    // Establecer la hora específica
+    todayBogota.setHours(hh, mm, 0, 0);
+
+    // Convertir a timestamp Unix
+    return Math.floor(todayBogota.getTime() / 1000);
+  } catch (error) {
+    console.error(`💥 Error convirtiendo hora ${hhmm}:`, error);
+    return null;
+  }
+};
+
+// Función para convertir labels a timestamps
+const convertLabelsToTimestamps = (labels) => {
+  return labels.map(label => {
+    // Si ya es un timestamp numérico, usarlo directamente
+    if (typeof label === 'number' && label > 1000000000) {
+      return label;
+    }
+    
+    // Si es string en formato HH:mm, convertirlo
+    if (typeof label === 'string' && label.includes(':')) {
+      const timestamp = hhmmToUnixTodayBogota(label);
+      return timestamp || Date.now() / 1000; // Fallback si la conversión falla
+    }
+    
+    // Si es string en formato de fecha, intentar parsearlo
+    if (typeof label === 'string') {
+      const date = new Date(label);
+      if (!isNaN(date.getTime())) {
+        return Math.floor(date.getTime() / 1000);
+      }
+    }
+    
+    // Fallback: usar timestamp actual
+    console.warn(`⚠️ No se pudo convertir label: ${label}`);
+    return Math.floor(Date.now() / 1000);
   });
 };
 
-function filterByRange(points = [], range = '1D'){
-  if(!points.length) return points;
-  const toSec = (t) =>
-    typeof t === 'number' ? t
-    : /^\d{4}-\d{2}-\d{2}$/.test(t)
-    ? Math.floor(new Date(t + 'T00:00:00Z').getTime()/1000)
-    : NaN;
-
-  const lastSec = toSec(points[points.length - 1].time);
-  if (!Number.isFinite(lastSec)) return points;
-
-  const days = { '1D':1, '5D':5, '1M':30, '6M':182, '1A':365 }[range] ?? 365;
-  const fromSec = lastSec - days*24*3600;
-
-  return points.filter(p => {
-    const ts = toSec(p.time);
-    return Number.isFinite(ts) ? ts >= fromSec : true;
-  });
-}
-
-function sma(series, period) {
-  if (!series.length || period < 1) return [];
-  const out = []; let sum = 0; const q = [];
-  for (let i = 0; i < series.length; i++) {
-    sum += series[i].value; q.push(series[i].value);
-    if (q.length > period) sum -= q.shift();
-    if (q.length === period) out.push({ time: series[i].time, value: +(sum/period).toFixed(2) });
-  }
-  return out;
-}
-
-function genSim(baseDay = "2025-09-16", points = 60) {
-  const base = Math.floor(Date.parse(`${baseDay}T08:00:00Z`) / 1000);
-  const times = Array.from({ length: points }, (_, i) => base + i * 300);
-  let p = 3895;
-  const price = times.map((t, i) => {
-    p += Math.sin(i/7)*0.9 + (Math.random()-0.5)*1.4;
-    return { time: t, value: +p.toFixed(2) };
-  });
-  const sma20 = sma(price, 20);
-  const lower = [], upper = [];
-  for (let i = 19; i < price.length; i++) {
-    const window = price.slice(i - 19, i + 1).map(x => x.value);
-    const avg = sma20[i - 19].value;
-    const variance = window.reduce((a,v)=>a+(v-avg)**2,0)/20;
-    const std = Math.sqrt(variance);
-    lower.push({ time: price[i].time, value: +(avg - 2*std).toFixed(2) });
-    upper.push({ time: price[i].time, value: +(avg + 2*std).toFixed(2) });
-  }
-  return { price, sma20, lower, upper };
-}
-
-function removeDuplicatesAndSort(points = []) {
-  if (!points.length) return points;
-  const uniqueMap = new Map();
-  points.forEach(point => {
-    if (Number.isFinite(point?.time) && Number.isFinite(point?.value)) {
-      uniqueMap.set(point.time, point);
-    }
-  });
-  const uniquePoints = Array.from(uniqueMap.values());
-  return uniquePoints.sort((a, b) => a.time - b.time);
-}
-
-/* ---------- component ---------- */
 export default function BollingerGrafico({
-  range = '1D',
+  range = "1D",
   height = 360,
-  baseDay = '2025-09-16',
   maxPoints = null,
-  simPoints = 60,
 }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
@@ -151,35 +136,36 @@ export default function BollingerGrafico({
   const lowerRef = useRef(null);
   const tipRef = useRef(null);
 
-  // Usar el contexto de gráficos
   const context = useWebSocketDataGrafico();
   const { useChartPayload } = context || {};
-
   const bollingerData = useChartPayload ? useChartPayload(1004, range) : null;
 
-  // init
   useEffect(() => {
     const el = containerRef.current;
+    if (!el) return;
+
     const chart = createChart(el, {
       width: el?.clientWidth || 640,
       height,
       layout: { background: { color: THEME.bg }, textColor: THEME.text },
-      grid: { vertLines: { color: THEME.grid }, horzLines: { color: THEME.grid } },
+      grid: {
+        vertLines: { color: THEME.grid },
+        horzLines: { color: THEME.grid },
+      },
       rightPriceScale: { borderVisible: false },
-      timeScale: { 
-        timeVisible: true, 
-        secondsVisible: false, 
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
         borderVisible: false,
-        // 🔥 MEJORA: Ajustar la visualización del tiempo
         tickMarkFormatter: (time) => {
           const d = new Date(time * 1000);
-          return d.toLocaleTimeString('es-CO', {
-            timeZone: 'America/Bogota',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
+          return d.toLocaleTimeString("es-CO", {
+            timeZone: "America/Bogota",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
           });
-        }
+        },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
@@ -193,74 +179,121 @@ export default function BollingerGrafico({
         ? (opts) => chart.addLineSeries(opts)
         : (opts) => chart.addSeries(LineSeries, opts);
 
-    const price = addLine({ color: THEME.price, lineWidth: 2, ...COMMON_SERIES_OPTS });
-    const sma20 = addLine({ color: THEME.sma8, lineWidth: 2, ...COMMON_SERIES_OPTS });
-    const lower = addLine({ color: THEME.band, lineWidth: 1, ...COMMON_SERIES_OPTS });
-    const upper = addLine({ color: THEME.band, lineWidth: 1, ...COMMON_SERIES_OPTS });
+    // Crear series en el orden correcto
+    const price = addLine({
+      color: THEME.price,
+      lineWidth: 2,
+      ...COMMON_SERIES_OPTS,
+    });
+    const sma20 = addLine({
+      color: THEME.sma,
+      lineWidth: 2,
+      ...COMMON_SERIES_OPTS,
+    });
+    const upper = addLine({
+      color: THEME.upperBand,
+      lineWidth: 1,
+      lineStyle: 2, // Dashed line
+      ...COMMON_SERIES_OPTS,
+    });
+    const lower = addLine({
+      color: THEME.lowerBand,
+      lineWidth: 1,
+      lineStyle: 2, // Dashed line
+      ...COMMON_SERIES_OPTS,
+    });
 
-    // tooltip
+    // Tooltip
     const tip = document.createElement("div");
     Object.assign(tip.style, {
-      position: "absolute", pointerEvents: "none", zIndex: 10, display: "none",
-      background: "rgba(15,17,24,.85)", backdropFilter: "blur(6px)", color: "#e7e7ea",
-      padding: "8px 10px", borderRadius: "8px", fontSize: "12px",
-      border: "1px solid rgba(255,255,255,.08)", boxShadow: "0 6px 18px rgba(0,0,0,.25)",
-      // 🔥 MEJORA: Ancho mínimo para tooltip
+      position: "absolute",
+      pointerEvents: "none",
+      zIndex: 10,
+      display: "none",
+      background: "rgba(15,17,24,.85)",
+      backdropFilter: "blur(6px)",
+      color: "#e7e7ea",
+      padding: "8px 10px",
+      borderRadius: "8px",
+      fontSize: "12px",
+      border: "1px solid rgba(255,255,255,.08)",
+      boxShadow: "0 6px 18px rgba(0,0,0,.25)",
       minWidth: "200px",
     });
-    el.style.position = "relative"; el.appendChild(tip);
+    el.style.position = "relative";
+    el.appendChild(tip);
 
     const row = (color, label, v) =>
-      v == null ? "" :
-      `<div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+      v == null
+        ? ""
+        : `<div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
          <span style="width:10px;height:10px;border-radius:2px;background:${color};display:inline-block;"></span>
          <span>${label}: <b>${Number(v).toLocaleString("es-CO")}</b></span>
        </div>`;
 
     const onMove = (param) => {
       if (!param?.time || !param.point) return (tip.style.display = "none");
-      const p  = param.seriesData.get(price)?.value;
-      const s  = param.seriesData.get(sma20)?.value;
-      const lo = param.seriesData.get(lower)?.value;
+      
+      const p = param.seriesData.get(price)?.value;
+      const s = param.seriesData.get(sma20)?.value;
       const up = param.seriesData.get(upper)?.value;
-      if (p == null && s == null && lo == null && up == null) return (tip.style.display = "none");
+      const lo = param.seriesData.get(lower)?.value;
       
-      // 🔥 MEJORA: Formatear hora exacta para el tooltip
-      const exactTime = fmtTime(param.time);
-      
+      if (p == null && s == null && up == null && lo == null)
+        return (tip.style.display = "none");
+
+      const exactTime = new Date(param.time * 1000).toLocaleTimeString("es-CO", {
+        timeZone: "America/Bogota",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+
       tip.innerHTML = `
         <div style="font-weight:600;margin-bottom:2px;color:#fff;">${exactTime}</div>
-        ${row("#0bbbf7","Cotización USD/COP", p)}
-        ${row(THEME.sma8,"Media móvil (20)", s)}
-        ${row(THEME.band,"Banda inferior (20, 2σ)", lo)}
-        ${row(THEME.band,"Banda superior (20, 2σ)", up)}
+        ${row(THEME.price, "Precio", p)}
+        ${row(THEME.sma, "SMA 20", s)}
+        ${row(THEME.upperBand, "Banda Superior", up)}
+        ${row(THEME.lowerBand, "Banda Inferior", lo)}
       `;
       tip.style.display = "block";
-      tip.style.left = `${Math.min(param.point.x + 12, el.clientWidth - 260)}px`;
-      tip.style.top  = `${param.point.y + 12}px`;
+      tip.style.left = `${Math.min(
+        param.point.x + 12,
+        el.clientWidth - 260
+      )}px`;
+      tip.style.top = `${param.point.y + 12}px`;
     };
     chart.subscribeCrosshairMove(onMove);
 
+    // Responsividad
     const ro = new ResizeObserver(() => {
       chart.applyOptions({ width: el.clientWidth || 640 });
       chart.timeScale().fitContent();
     });
     ro.observe(el);
 
-    chartRef.current   = chart;
-    priceRef.current   = price;
-    sma20Ref.current   = sma20;
-    upperRef.current   = upper;
-    lowerRef.current   = lower;
-    tipRef.current     = tip;
+    // Guardar referencias
+    chartRef.current = chart;
+    priceRef.current = price;
+    sma20Ref.current = sma20;
+    upperRef.current = upper;
+    lowerRef.current = lower;
+    tipRef.current = tip;
 
     return () => {
       ro.disconnect();
       chart.unsubscribeCrosshairMove(onMove);
-      if (tipRef.current && el.contains(tipRef.current)) el.removeChild(tipRef.current);
+      if (tipRef.current && el.contains(tipRef.current))
+        el.removeChild(tipRef.current);
       chart.remove();
-      chartRef.current = priceRef.current = sma20Ref.current =
-        upperRef.current = lowerRef.current = tipRef.current = null;
+      chartRef.current =
+        priceRef.current =
+        sma20Ref.current =
+        upperRef.current =
+        lowerRef.current =
+        tipRef.current =
+          null;
     };
   }, []);
 
@@ -268,88 +301,158 @@ export default function BollingerGrafico({
     if (chartRef.current) chartRef.current.applyOptions({ height });
   }, [height]);
 
-  // set data from WebSocket context
-  useEffect(() => {
-    if (!chartRef.current) return;
+// EFECTO PRINCIPAL CORREGIDO - Procesamiento de datos
+useEffect(() => {
+  if (!chartRef.current || !bollingerData) return;
 
-    let price = [], sma20 = [], lower = [], upper = [];
+  console.log("📊 [BOLLINGER] Procesando datos:", bollingerData);
 
-    if (bollingerData) {
-      console.log("📊 [BOLLINGER] Datos recibidos del contexto:", bollingerData);
-      
-      const { labels, datasets } = bollingerData;
-      
-      if (datasets && datasets.length >= 4) {
-        price = datasets[0]?.data?.map((value, index) => ({
-          time: labels[index],
-          value: value
-        })) || [];
+  const { labels, datasets } = bollingerData;
 
-        sma20 = datasets[1]?.data?.map((value, index) => ({
-          time: labels[index],
-          value: value
-        })) || [];
+  if (!labels || !datasets || datasets.length < 4) {
+    console.warn("❌ [BOLLINGER] Estructura de datos incompleta");
+    return;
+  }
 
-        lower = datasets[2]?.data?.map((value, index) => ({
-          time: labels[index],
-          value: value
-        })) || [];
+  // EXTRAER DATOS EN EL ORDEN CORRECTO según la nueva estructura
+  const priceData = datasets[0]?.data || [];
+  const smaData = datasets[1]?.data || [];
+  const upperData = datasets[2]?.data || [];
+  const lowerData = datasets[3]?.data || [];
 
-        upper = datasets[3]?.data?.map((value, index) => ({
-          time: labels[index],
-          value: value
-        })) || [];
-      }
+  console.log("📊 [BOLLINGER] Datasets encontrados:", {
+    precio: priceData.length,
+    sma: smaData.length,
+    superior: upperData.length,
+    inferior: lowerData.length,
+    labels: labels.length
+  });
+
+  // CORRECCIÓN: Convertir labels a timestamps
+  const timestampLabels = convertLabelsToTimestamps(labels);
+  console.log("🕒 [BOLLINGER] Labels convertidos a timestamps:", timestampLabels.slice(0, 5));
+
+  // Convertir a formato de series CON TIMESTAMPS
+  const priceSeries = timestampLabels
+    .map((timestamp, index) => ({
+      time: timestamp,
+      value: priceData[index]
+    }))
+    .filter(point => point.value != null && point.value !== 0);
+
+  const smaSeries = timestampLabels
+    .map((timestamp, index) => ({
+      time: timestamp,
+      value: smaData[index]
+    }))
+    .filter(point => point.value != null && point.value !== 0);
+
+  const upperSeries = timestampLabels
+    .map((timestamp, index) => ({
+      time: timestamp,
+      value: upperData[index]
+    }))
+    .filter(point => point.value != null && point.value !== 0);
+
+  const lowerSeries = timestampLabels
+    .map((timestamp, index) => ({
+      time: timestamp,
+      value: lowerData[index]
+    }))
+    .filter(point => point.value != null && point.value !== 0);
+
+  console.log("📊 [BOLLINGER] Series procesadas:", {
+    precio: priceSeries.length,
+    sma: smaSeries.length,
+    superior: upperSeries.length,
+    inferior: lowerSeries.length
+  });
+
+  // VERIFICAR ORDEN Y DUPLICADOS
+  console.log("🔍 [BOLLINGER] Verificando orden de datos...");
+  
+  // Verificar si hay timestamps duplicados en priceSeries
+  const priceTimestamps = priceSeries.map(p => p.time);
+  const uniquePriceTimestamps = [...new Set(priceTimestamps)];
+  
+  if (priceTimestamps.length !== uniquePriceTimestamps.length) {
+    console.warn(`⚠️ [BOLLINGER] Se encontraron ${priceTimestamps.length - uniquePriceTimestamps.length} timestamps duplicados en priceSeries`);
+  }
+
+  // Verificar si los datos están ordenados
+  const isPriceSorted = priceSeries.every((point, index, array) => 
+    index === 0 || point.time >= array[index - 1].time
+  );
+  
+  if (!isPriceSorted) {
+    console.warn("⚠️ [BOLLINGER] Los datos de precio no están ordenados, ordenando...");
+  }
+
+  try {
+    // Limpiar datos existentes
+    priceRef.current.setData([]);
+    sma20Ref.current.setData([]);
+    upperRef.current.setData([]);
+    lowerRef.current.setData([]);
+
+    // APLICAR ORDENAMIENTO Y ELIMINAR DUPLICADOS
+    const sortedPriceSeries = sortAndDeduplicateData(priceSeries);
+    const sortedSmaSeries = sortAndDeduplicateData(smaSeries);
+    const sortedUpperSeries = sortAndDeduplicateData(upperSeries);
+    const sortedLowerSeries = sortAndDeduplicateData(lowerSeries);
+
+    // Diagnóstico de datos
+    diagnoseDataOrder(sortedPriceSeries, "PRICE");
+
+    // Establecer nuevos datos SOLO si hay datos válidos
+    if (sortedPriceSeries.length > 0) {
+      priceRef.current.setData(sortedPriceSeries);
+      console.log(`✅ [BOLLINGER] ${sortedPriceSeries.length} puntos de precio establecidos`);
+    } else {
+      console.warn("⚠️ [BOLLINGER] No hay datos válidos para la serie de precio");
     }
 
-    if (!price.length) {
-      console.log("🔄 [BOLLINGER] Usando datos de simulación");
-      const sim = genSim(baseDay, simPoints);
-      price = sim.price;
-      sma20 = sim.sma20;
-      lower = sim.lower;
-      upper = sim.upper;
+    if (sortedSmaSeries.length > 0) {
+      sma20Ref.current.setData(sortedSmaSeries);
     }
 
-    const applyRangeAndLimit = (arr) => {
-      let filtered = filterByRange(arr, range);
-      if (maxPoints && filtered.length > maxPoints) {
-        filtered = filtered.slice(-maxPoints);
-      }
-      return removeDuplicatesAndSort(filtered);
-    };
-
-    const finalPrice = applyRangeAndLimit(price);
-    const finalSma20 = applyRangeAndLimit(sma20);
-    const finalLower = applyRangeAndLimit(lower);
-    const finalUpper = applyRangeAndLimit(upper);
-
-    console.log('📊 [BOLLINGER] Datos finales para gráfico:', {
-      price: finalPrice.length,
-      sma20: finalSma20.length,
-      lower: finalLower.length,
-      upper: finalUpper.length
-    });
-
-    try {
-      priceRef.current.setData(finalPrice);
-      sma20Ref.current.setData(finalSma20);
-      lowerRef.current.setData(finalLower);
-      upperRef.current.setData(finalUpper);
-
-      if (finalPrice.length > 0) {
-        chartRef.current.timeScale().fitContent();
-      }
-    } catch (e) {
-      console.error('💥 [BOLLINGER] Error estableciendo datos:', e);
+    if (sortedUpperSeries.length > 0) {
+      upperRef.current.setData(sortedUpperSeries);
     }
-  }, [bollingerData, range, maxPoints, baseDay, simPoints]);
 
- return (
-  <div 
-    ref={containerRef} 
-    className="w-full h-full border border-slate-700 rounded-lg bg-slate-900/50"
-    style={{ height }} 
-  />
-);
+    if (sortedLowerSeries.length > 0) {
+      lowerRef.current.setData(sortedLowerSeries);
+    }
+
+    // Ajustar la escala de tiempo solo si hay datos
+    if (sortedPriceSeries.length > 0) {
+      chartRef.current.timeScale().fitContent();
+      console.log("✅ [BOLLINGER] Gráfico actualizado correctamente");
+    } else {
+      console.warn("⚠️ [BOLLINGER] No hay datos para mostrar en el gráfico");
+    }
+  } catch (error) {
+    console.error("💥 [BOLLINGER] Error actualizando gráfico:", error);
+    
+    // Diagnóstico adicional del error
+    if (error.message.includes("asc ordered")) {
+      console.error("🔍 [BOLLINGER_DIAGNOSTIC] Diagnóstico de datos problemáticos:");
+      priceSeries.forEach((point, index) => {
+        if (index > 0 && point.time < priceSeries[index - 1].time) {
+          console.error(`   Índice ${index}: tiempo=${point.time}, anterior=${priceSeries[index - 1].time} - NO ORDENADO`);
+        } else if (index > 0 && point.time === priceSeries[index - 1].time) {
+          console.error(`   Índice ${index}: tiempo=${point.time}, anterior=${priceSeries[index - 1].time} - DUPLICADO`);
+        }
+      });
+    }
+  }
+}, [bollingerData, range, maxPoints]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full h-full border border-slate-700 rounded-lg bg-slate-900/50"
+      style={{ height }}
+    />
+  );
 }

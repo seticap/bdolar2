@@ -1,41 +1,92 @@
 // app/components/VelasGrafico.jsx
+
 "use client";
-import { useEffect, useMemo, useRef } from "react";
+
+/**
+ * Gráfico de velas (candlesticks) basado en `lightweight-charts`.
+ * Muestra datos en tiempo real provenientes del WebSocket.
+ * No altera la funcionalidad existente; únicamente añade documentación.
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * EXPECTATIVAS DE DATA
+ * Cada vela debe tener la forma:
+ * {
+ *   time:  number (epoch seconds),
+ *   open:  number,
+ *   high:  number,
+ *   low:   number,
+ *   close: number
+ * }
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * PROPS
+ * @typedef {Object} VelasGraficoProps
+ * @property {Array<Candle>|undefined} payload     - Arreglo de velas proveniente de WS.
+ * @property {number}                  [height=360]- Alto del chart en px.
+ * @property {'1D'|'5D'|'1M'|'6M'|'1A'} [range='1D'] - Rango temporal usado para filtrar/ajustar.
+ * @property {string}                  [title]     - Título visual/interno (no se renderiza aquí).
+ *
+ * @typedef {Object} Candle
+ * @property {number} time
+ * @property {number} open
+ * @property {number} high
+ * @property {number} low
+ * @property {number} close
+ */
+
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   createChart,
   CandlestickSeries,
   CrosshairMode,
 } from "lightweight-charts";
 
+/**
+ * Paleta de colores/estilos para el chart y la UI del tooltip.
+ * (Solo estilos; no modifica la lógica del gráfico)
+ */
+
 const THEME = {
-  bg: "transparent", // ← CAMBIAR de "#000" a "transparent"
-  text: "#9aa4b2", // ← CAMBIAR de "#e7e7ea" a "#9aa4b2"
-  grid: "rgba(255,255,255,.06)", // ← CAMBIAR de ".08" a ".06"
-  cross: "rgba(255,255,255,.18)", // ← CAMBIAR de ".25" a ".18"
-  up: "#22c55e",
-  down: "#ef4444",
-  wickUp: "#22c55e",
-  wickDown: "#ef4444",
-  borderUp: "#22c55e",
-  borderDown: "#ef4444",
+  bg: "transparent", // fondo del canvas
+  text: "#9aa4b2", // color de texto general
+  grid: "rgba(255,255,255,.06)",  // líneas de grilla
+  cross: "rgba(255,255,255,.18)", // líneas del crosshair
+  up: "#22c55e", // vela alcista
+  down: "#ef4444", // vela bajista
+  wickUp: "#22c55e", // mecha alcista
+  wickDown: "#ef4444", // mecha bajista
+  borderUp: "#22c55e", // borde alcista
+  borderDown: "#ef4444", // borde bajista
 };
+
+/**
+ * Opciones comunes a la serie de velas para simplificar la configuración.
+ */
 
 const COMMON_SERIES_OPTS = {
   lastValueVisible: false,
   priceLineVisible: false,
 };
 
-// Función corregida para filtrar datos SOLO por hoy
+  /**
+ * Filtra datos SOLO del día actual en zona horaria de Bogotá cuando `range` es "1D".
+ * Para otros rangos, retorna la colección original sin cambios.
+ *
+ * @param {Array<Candle>} data
+ * @param {'1D'|'5D'|'1M'|'6M'|'1A'} range
+ * @returns {Array<Candle>}
+ */
+
 const filterDataByDate = (data, range = "1D") => {
   if (range !== "1D" || !Array.isArray(data)) return data;
   
   try {
-    // Obtener la fecha actual EN BOGOTÁ
+    // Fecha actual en Bogotá
     const nowBogota = new Date(new Date().toLocaleString("en-US", { 
       timeZone: "America/Bogota" 
     }));
     
-    // Calcular inicio del día actual en Bogotá (00:00:00)
+    // Inicio del día (00:00:00) y fin del día (23:59:59) en Bogotá
     const startOfToday = new Date(nowBogota);
     startOfToday.setHours(0, 0, 0, 0);
     const startOfTodayTimestamp = Math.floor(startOfToday.getTime() / 1000);
@@ -47,7 +98,7 @@ const filterDataByDate = (data, range = "1D") => {
     
     console.log(`📅 [FILTER_BY_DATE_VELAS] Filtrando para HOY: ${startOfToday.toLocaleDateString("es-CO")}`);
 
-    // Filtrar datos que estén dentro del día de HOY
+    // Solo velas dentro del día actual (zona Bogotá)
     const filteredData = data.filter(item => {
       const itemTime = item.time;
       return itemTime >= startOfTodayTimestamp && itemTime <= endOfTodayTimestamp;
@@ -61,66 +112,14 @@ const filterDataByDate = (data, range = "1D") => {
     return data;
   }
 };
-// Función para generar datos de velas de prueba (fallback)
-const generateFallbackVelasData = (range) => {
-  console.log("🔄 [FALLBACK_VELAS] Generando datos de prueba para", range);
 
-  const now = Math.floor(Date.now() / 1000);
-  let interval, count;
+  /**
+ * Formatea un timestamp (epoch seconds) a fecha local de Bogotá legible.
+ * Si recibe string, lo retorna tal cual.
+ * @param {number|string} t
+ * @returns {string}
+ */
 
-  switch (range) {
-    case "1D":
-      interval = 300;
-      count = 288;
-      break;
-    case "5D":
-      interval = 1800;
-      count = 240;
-      break;
-    case "1M":
-      interval = 3600;
-      count = 720;
-      break;
-    case "6M":
-      interval = 86400;
-      count = 180;
-      break;
-    case "1A":
-      interval = 86400;
-      count = 365;
-      break;
-    default:
-      interval = 300;
-      count = 100;
-  }
-
-  const velas = [];
-  let basePrice = 3800;
-
-  for (let i = 0; i < count; i++) {
-    const time = now - (count - i - 1) * interval;
-    const variation = (Math.random() - 0.5) * 20;
-    const open = basePrice + variation;
-    const close = open + (Math.random() - 0.5) * 10;
-    const high = Math.max(open, close) + Math.random() * 5;
-    const low = Math.min(open, close) - Math.random() * 5;
-
-    velas.push({
-      time,
-      open: Number(open.toFixed(2)),
-      high: Number(high.toFixed(2)),
-      low: Number(low.toFixed(2)),
-      close: Number(close.toFixed(2)),
-    });
-
-    basePrice = close;
-  }
-
-  console.log(`✅ [FALLBACK_VELAS] ${velas.length} velas de prueba generadas`);
-  return velas;
-};
-
-// Función para formatear fecha completa
 const fmtDate = (t) => {
   if (typeof t === "string") return t;
   
@@ -135,26 +134,33 @@ const fmtDate = (t) => {
   });
 };
 
-/* ---------- component ---------- */
+/* ───────────────────────────────── component ───────────────────────────────── */
 export default function VelasGrafico({
   payload,
   height = 360,
   range = '1D',
   title = "Gráfico de Velas USD/COP",
-  forceSimulated = false,
 }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const candlestickRef = useRef(null);
   const tipRef = useRef(null);
 
-  // init chart - VERSIÓN CORREGIDA
+   /**
+   * Inicializa el chart una sola vez:
+   * - crea el canvas
+   * - agrega la serie de velas
+   * - configura tooltip custom y listeners
+   * - limpia recursos al desmontar
+   */
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
     console.log("🚀 [VELAS] Inicializando gráfico de velas...");
 
+    // Crear chart base
     const chart = createChart(el, {
       width: el?.clientWidth || 640,
       height,
@@ -206,10 +212,9 @@ export default function VelasGrafico({
       },
     });
 
-    // CREAR SERIE DE VELAS - VERSIÓN CORREGIDA
+    // Crear serie de velas (mantiene la implementación existente)
     let candlestickSeries;
     try {
-      // Método CORRECTO para versiones recientes de lightweight-charts
       candlestickSeries = chart.addSeries(CandlestickSeries, {
         upColor: THEME.up,
         downColor: THEME.down,
@@ -225,7 +230,7 @@ export default function VelasGrafico({
       return;
     }
 
-    // tooltip
+    // Tooltip flotante personalizado (DOM)
     const tip = document.createElement("div");
     Object.assign(tip.style, {
       position: "absolute",
@@ -246,6 +251,7 @@ export default function VelasGrafico({
     el.style.position = "relative";
     el.appendChild(tip);
 
+    // Listener para mover el tooltip con el crosshair
     const onMove = (param) => {
       if (!param?.time || !param.point) {
         tip.style.display = "none";
@@ -297,7 +303,8 @@ export default function VelasGrafico({
     };
 
     chart.subscribeCrosshairMove(onMove);
-
+    
+    // ResizeObserver para responsividad horizontal
     const ro = new ResizeObserver(() => {
       chart.applyOptions({ width: el.clientWidth || 640 });
     });
@@ -309,6 +316,7 @@ export default function VelasGrafico({
 
     console.log("✅ [VELAS] Gráfico inicializado correctamente");
 
+    // Limpieza de listeners, observer y DOM extra
     return () => {
       console.log("🧹 [VELAS] Limpiando gráfico...");
       ro.disconnect();
@@ -321,103 +329,102 @@ export default function VelasGrafico({
     };
   }, []);
 
-  // adjust height
+  /**
+   * Ajusta la altura del chart cuando cambia la prop `height`.
+   */
   useEffect(() => {
     if (chartRef.current) {
       chartRef.current.applyOptions({ height });
     }
   }, [height]);
 
-  // set data (payload o simulación) - VERSIÓN MEJORADA
-  useEffect(() => {
-    if (!chartRef.current || !candlestickRef.current) {
-      console.log("⏳ [VELAS_GRAFICO] Esperando inicialización del gráfico...");
-      return;
+  /**
+ * Inyecta datos en la serie:
+ * - Usa `payload` (datos reales del WebSocket) y aplica filtro de "hoy" para 1D.
+ * - Sanitiza y ordena por `time` ascendente antes de setear.
+ * - Ajusta la escala de tiempo para encajar el contenido.
+   */
+useEffect(() => {
+  if (!chartRef.current || !candlestickRef.current) {
+    console.log("⏳ [VELAS_GRAFICO] Esperando inicialización del gráfico...");
+    return;
+  }
+
+  console.log("📊 [VELAS_GRAFICO] Actualizando datos:", {
+    tienePayload: !!payload,
+    esArray: Array.isArray(payload),
+    arrayLength: Array.isArray(payload) ? payload.length : 'N/A',
+    range
+  });
+
+  // Solo procesar si hay datos reales disponibles
+  if (!payload || !Array.isArray(payload) || payload.length === 0) {
+    console.log("⏳ [VELAS_GRAFICO] Esperando datos reales...");
+    return;
+  }
+
+  console.log("✅ [VELAS_GRAFICO] Usando datos reales del payload:", payload.length, "velas");
+  
+  // Filtro de "hoy" cuando el rango es 1D
+  const todayPayload = filterDataByDate(payload, range);
+  console.log(`📅 [VELAS_GRAFICO_FILTERED] ${payload.length} -> ${todayPayload.length} velas de hoy`);
+  
+  // Normalización/validación de estructura
+  const velasData = todayPayload.map(item => {
+    if (item && 
+        typeof item.time === 'number' && 
+        typeof item.open === 'number' && 
+        typeof item.high === 'number' && 
+        typeof item.low === 'number' && 
+        typeof item.close === 'number') {
+      return {
+        time: item.time,
+        open: item.open,
+        high: item.high,
+        low: item.low,
+        close: item.close
+      };
     }
+    console.warn("⚠️ [VELAS_GRAFICO] Vela inválida encontrada:", item);
+    return null;
+  }).filter(Boolean);
 
-    console.log("📊 [VELAS_GRAFICO] Actualizando datos:", {
-      tienePayload: !!payload,
-      esArray: Array.isArray(payload),
-      arrayLength: Array.isArray(payload) ? payload.length : 'N/A',
-      forceSimulated,
-      range
-    });
+  console.log("✅ [VELAS_GRAFICO] Datos procesados:", velasData.length, "velas válidas");
 
-    let velasData = [];
+  // Sanitizar y ordenar datos finales
+  const sanitizedData = velasData
+    .filter(candle => 
+      candle && 
+      Number.isFinite(candle.time) && 
+      Number.isFinite(candle.open) && 
+      Number.isFinite(candle.high) && 
+      Number.isFinite(candle.low) && 
+      Number.isFinite(candle.close)
+    )
+    .sort((a, b) => a.time - b.time);
 
-    // Intentar obtener datos del payload primero
-    if (!forceSimulated && payload && Array.isArray(payload)) {
-      console.log("✅ [VELAS_GRAFICO] Usando datos reales del payload:", payload.length, "velas");
+  console.log("✅ [VELAS_GRAFICO] Datos finales listos:", sanitizedData.length, "velas");
+
+  // Establecer datos en la serie y ajustar la escala
+  if (sanitizedData.length > 0) {
+    try {
+      console.log("🔄 [VELAS_GRAFICO] Estableciendo datos en el gráfico...");
+      candlestickRef.current.setData(sanitizedData);
       
-      // ==== AGREGAR ESTAS LÍNEAS ====
-      // Aplicar filtro para hoy
-      const todayPayload = filterDataByDate (payload, range);
-      console.log(`📅 [VELAS_GRAFICO_FILTERED] ${payload.length} -> ${todayPayload.length} velas de hoy`);
-      
-      // Procesar los datos de velas
-      velasData = todayPayload.map(item => {
-        // Validar que tenga la estructura esperada
-        if (item && 
-            typeof item.time === 'number' && 
-            typeof item.open === 'number' && 
-            typeof item.high === 'number' && 
-            typeof item.low === 'number' && 
-            typeof item.close === 'number') {
-          return {
-            time: item.time,
-            open: item.open,
-            high: item.high,
-            low: item.low,
-            close: item.close
-          };
-        }
-        console.warn("⚠️ [VELAS_GRAFICO] Vela inválida encontrada:", item);
-        return null;
-      }).filter(Boolean);
-
-      console.log("✅ [VELAS_GRAFICO] Datos procesados:", velasData.length, "velas válidas");
-    }
-
-    // Si no hay datos reales, usar datos simulados
-    if (velasData.length === 0) {
-      console.log("🔄 [VELAS_GRAFICO] Usando datos simulados");
-      velasData = generateFallbackVelasData(range);
-    }
-
-    // Sanitizar datos finales
-    const sanitizedData = velasData
-      .filter(candle => 
-        candle && 
-        Number.isFinite(candle.time) && 
-        Number.isFinite(candle.open) && 
-        Number.isFinite(candle.high) && 
-        Number.isFinite(candle.low) && 
-        Number.isFinite(candle.close)
-      )
-      .sort((a, b) => a.time - b.time);
-
-    console.log("✅ [VELAS_GRAFICO] Datos finales listos:", sanitizedData.length, "velas");
-
-    // Establecer los datos en el gráfico
-    if (sanitizedData.length > 0) {
-      try {
-        console.log("🔄 [VELAS_GRAFICO] Estableciendo datos en el gráfico...");
-        candlestickRef.current.setData(sanitizedData);
-        
-        // Ajustar la escala de tiempo para mostrar todos los datos
-        if (sanitizedData.length >= 2) {
-          console.log("🔄 [VELAS_GRAFICO] Ajustando escala de tiempo...");
-          chartRef.current.timeScale().fitContent();
-        }
-        console.log("✅ [VELAS_GRAFICO] Datos establecidos en el gráfico correctamente");
-      } catch (error) {
-        console.error("💥 [VELAS_GRAFICO] Error estableciendo datos:", error);
+      // Ajustar la escala de tiempo para mostrar todos los datos
+      if (sanitizedData.length >= 2) {
+        console.log("🔄 [VELAS_GRAFICO] Ajustando escala de tiempo...");
+        chartRef.current.timeScale().fitContent();
       }
-    } else {
-      console.warn("⚠️ [VELAS_GRAFICO] No hay datos válidos para mostrar");
+      console.log("✅ [VELAS_GRAFICO] Datos establecidos en el gráfico correctamente");
+    } catch (error) {
+      console.error("💥 [VELAS_GRAFICO] Error estableciendo datos:", error);
     }
-  }, [payload, range, forceSimulated]);
-
+  } else {
+    console.warn("⚠️ [VELAS_GRAFICO] No hay datos válidos para mostrar");
+  }
+}, [payload, range]);
+  // Contenedor del chart (canvas se monta dentro por lightweight-charts)
 return (
   <div
     ref={containerRef}

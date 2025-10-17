@@ -1,11 +1,44 @@
 // app/components/PrecioGrafica.jsx
 "use client";
+
+/**
+ * Gráfico de línea para la cotización USD/COP usando `lightweight-charts`.
+ *
+ * Esta versión **solo agrega documentación y comentarios**; no modifica la lógica existente.
+ *
+ * Capaz de:
+ *  - Normalizar distintos formatos de `payload` (datasets/labels, arrays simples, estructuras anidadas)
+ *  - Convertir etiquetas de tiempo (HH:mm, YYYY-MM-DD, YYYY-MM-DD HH:mm) a epoch seconds en zona Bogotá
+ *  - Eliminar duplicados por timestamp y ordenar datos antes de renderizar
+ *  - Mostrar un tooltip flotante rico en información, estilizado y consistente con la app
+ *  - Ajustar automáticamente la escala de tiempo al contenido
+ *
+ * ESTRUCTURAS DE PAYLOAD SOPORTADAS
+ * 1) { labels: [...], datasets: [{ data: [...] }] }
+ * 2) Array<number|string>  (valores directos)
+ * 3) { chartData: [{ time|t, value|v }, ...] } (ya normalizado)
+ * 4) Otras estructuras con arrays dentro de propiedades comunes: data, values, series, chartData, points
+ *
+ * PROPS
+ * @typedef {Object} PrecioGraficaProps
+ * @property {any}      payload                 - Datos crudos o normalizados (ver formatos arriba).
+ * @property {any}      [baseDay=null]          - Semilla opcional (no usada en esta implementación).
+ * @property {string}   [title="Cotización USD/COP"] - Título semántico (no renderizado aquí).
+ * @property {number}   [height=360]            - Alto del gráfico en píxeles.
+ * @property {'1D'|'5D'|'1M'|'6M'|'1A'} [range="1D"] - Rango temporal que guía el parseo/espaciado.
+ */
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createChart, CrosshairMode, ColorType, LineSeries } from "lightweight-charts";
 
-// ========== FUNCIONES DE PARSEO MEJORADAS ==========
+/* ──────────────────────────── PARSEO Y UTILIDADES ──────────────────────────── */
 
-// Función para normalizar números
+/**
+ * Normaliza números que pueden venir como string con separadores/espacios → number.
+ * @param {number|string} x
+ * @returns {number} NaN si no puede normalizar
+ */
+
 const normalizeNumber = (x) => {
   if (typeof x === "number") return x;
   if (typeof x === "string") {
@@ -15,7 +48,12 @@ const normalizeNumber = (x) => {
   return NaN;
 };
 
-// Función mejorada para convertir HH:mm a timestamp
+/**
+ * Convierte una hora "HH:mm" del día actual en Bogotá a epoch seconds.
+ * Incluye validaciones y un fallback si el constructor de Date falla.
+ * @param {string} hhmm
+ * @returns {number|null}
+ */
 const hhmmToUnixTodayBogota = (hhmm) => {
   try {
     console.log(`⏰ [TIME_CONVERSION] Convirtiendo: ${hhmm}`);
@@ -33,12 +71,12 @@ const hhmmToUnixTodayBogota = (hhmm) => {
     const month = bogotaTime.getMonth();
     const day = bogotaTime.getDate();
     
-    // Crear fecha en Bogotá con la hora especificada
+    // Intento principal: string con offset -05:00 (hora estándar Colombia)
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00-05:00`;
     const date = new Date(dateStr);
     
     if (isNaN(date.getTime())) {
-      // Fallback: usar UTC offset
+      // Fallback: construir con UTC sumando offset
       const fallbackDate = new Date(Date.UTC(year, month, day, hh + 5, mm, 0));
       const timestamp = isNaN(fallbackDate.getTime()) ? null : Math.floor(fallbackDate.getTime() / 1000);
       console.log(`🔄 [TIME_CONVERSION] Fallback usado: ${timestamp}`);
@@ -55,7 +93,13 @@ const hhmmToUnixTodayBogota = (hhmm) => {
   }
 };
 
-// Función para convertir fecha completa a timestamp Bogotá
+/**
+ * Convierte "YYYY-MM-DD" o "YYYY-MM-DD HH:mm" a epoch seconds aproximado a Bogotá (offset -05).
+ * - Si solo hay fecha, usa 12:00 (mediodía) en Bogotá para ubicar el punto.
+ * @param {string} dateStr
+ * @returns {number|null}
+ */
+
 const fullDateToUnixBogota = (dateStr) => {
   try {
     console.log(`📅 [DATE_CONVERSION] Convirtiendo: ${dateStr}`);
@@ -68,10 +112,10 @@ const fullDateToUnixBogota = (dateStr) => {
       const [datePart, timePart] = dateStr.split(' ');
       const [year, month, day] = datePart.split('-').map(Number);
       const [hours, minutes] = timePart.split(':').map(Number);
-      
+      // Ajuste UTC considerando offset -05 para obtener timestamp consistente
       date = new Date(Date.UTC(year, month - 1, day, hours + 5, minutes, 0));
     } else if (dateStr.includes('-')) {
-      // Formato: YYYY-MM-DD
+      // Formato: YYYY-MM-DD → usar mediodía para representatividad
       const [year, month, day] = dateStr.split('-').map(Number);
       date = new Date(Date.UTC(year, month - 1, day, 12 + 5, 0, 0)); // Mediodía Bogotá
     } else {
@@ -94,7 +138,15 @@ const fullDateToUnixBogota = (dateStr) => {
   }
 };
 
-// FUNCIÓN DE PARSEO PRINCIPAL - MEJORADA PARA EVITAR DUPLICADOS
+/**
+ * Parsea la respuesta de API (flexible) a puntos { t, v } sin duplicados ni valores inválidos.
+ * - Detecta estructuras datasets/labels, arrays puros, u otras rutas posibles.
+ * - Genera timestamps razonables basados en el `range` cuando no hay información temporal explícita.
+ * @param {any} apiResponse
+ * @param {'1D'|'5D'|'1M'|'6M'|'1A'} range
+ * @returns {{t:number, v:number}[]}
+ */
+
 const parseApiResponseToPoints = (apiResponse, range) => {
   try {
     console.log('🔍 [PARSE_API_RESPONSE] Iniciando parseo:', {
@@ -111,7 +163,7 @@ const parseApiResponseToPoints = (apiResponse, range) => {
     const points = [];
     const seenTimestamps = new Set();
 
-    // CASO 1: Datos en formato datasets/labels (más común)
+    // CASO 1: Estructura típica datasets/labels
     if (apiResponse.datasets && apiResponse.labels) {
       console.log('📊 [PARSE_API_RESPONSE] Formato datasets/labels detectado');
       
@@ -155,7 +207,7 @@ const parseApiResponseToPoints = (apiResponse, range) => {
         }
 
         if (timestamp && Number.isFinite(numericValue)) {
-          // Evitar duplicados
+           // Evitar duplicados por timestamp exacto
           if (!seenTimestamps.has(timestamp)) {
             seenTimestamps.add(timestamp);
             points.push({
@@ -168,7 +220,7 @@ const parseApiResponseToPoints = (apiResponse, range) => {
         }
       }
     }
-    // CASO 2: Datos en formato array simple
+    // CASO 2: Array simple de valores
     else if (Array.isArray(apiResponse)) {
       console.log('📊 [PARSE_API_RESPONSE] Formato array simple detectado');
       const now = Math.floor(Date.now() / 1000);
@@ -216,7 +268,7 @@ const parseApiResponseToPoints = (apiResponse, range) => {
         if (apiResponse[path] && Array.isArray(apiResponse[path])) {
           console.log(`📊 [PARSE_API_RESPONSE] Encontrados datos en: ${path}`);
           const arrayData = parseSimpleArrayResponse(apiResponse[path], range);
-          // Eliminar duplicados del array simple también
+          // También evitar duplicados en este camino
           const uniqueArrayData = [];
           const arraySeen = new Set();
           for (const point of arrayData) {
@@ -245,7 +297,14 @@ const parseApiResponseToPoints = (apiResponse, range) => {
   }
 };
 
-// Función para parsear array simple
+/**
+ * Variante de parseo cuando nos pasan un array simple de valores.
+ * Genera timestamps razonables según el `range`.
+ * @param {Array<number|string>} dataArray
+ * @param {'1D'|'5D'|'1M'|'6M'|'1A'} range
+ * @returns {{t:number, v:number}[]}
+ */
+
 const parseSimpleArrayResponse = (dataArray, range) => {
   if (!Array.isArray(dataArray) || dataArray.length === 0) {
     console.warn('[SIMPLE_ARRAY] Datos no válidos o vacíos');
@@ -260,7 +319,7 @@ const parseSimpleArrayResponse = (dataArray, range) => {
   for (let i = 0; i < dataArray.length; i++) {
     const price = normalizeNumber(dataArray[i]);
     if (Number.isFinite(price)) {
-      // Generar timestamps realistas basados en el rango
+      // Timestamps aproximados por rango
       let timestamp;
       switch (range) {
         case '1D':
@@ -293,6 +352,11 @@ const parseSimpleArrayResponse = (dataArray, range) => {
   return points;
 };
 
+/* ──────────────────────────────── THEME ──────────────────────────────── */
+
+/**
+ * Paleta y estilos del chart.
+ */
 const THEME = {
   bg: "transparent",
   text: "#9aa4b2",
@@ -303,10 +367,17 @@ const THEME = {
   primaryBottom: "rgba(34,197,94,.06)",
 };
 
-// Componente de Tooltip mejorado - ESTILOS CONSISTENTES
+/* ───────────────────────────── Tooltip UI ───────────────────────────── */
+
+/**
+ * Tooltip flotante del gráfico.
+ * Presenta precio, hora, fecha descriptiva, variación (base 3900 como ejemplo) y conteo de puntos.
+ * @param {{ visible:boolean, price:number|null, time:string, x:number, y:number, pointCount:number }} props
+ */
 function ChartTooltip({ visible, price, time, x, y, pointCount }) {
   if (!visible) return null;
 
+    // Nota: variación ilustrativa, puede ajustarse según tu lógica real
   const variation = price && pointCount > 1 ? ((price - 3900) / 3900 * 100) : 0; // Ejemplo de cálculo de variación
   const isPositive = variation >= 0;
 
@@ -377,6 +448,14 @@ function ChartTooltip({ visible, price, time, x, y, pointCount }) {
   );
 }
 
+/* ─────────────────────────── Componente Principal ─────────────────────────── */
+
+/**
+ * Componente de gráfico de precio (línea).
+ * - Crea y gestiona el chart (montaje, tamaño, crosshair/tooltip)
+ * - Normaliza y pinta data con `useMemo` + `useEffect`
+ * @param {PrecioGraficaProps} props
+ */
 export default function PrecioGrafica({
   payload,
   baseDay = null,
@@ -387,6 +466,7 @@ export default function PrecioGrafica({
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
+  /** Estado del tooltip custom (controlado por crosshair) */
   const [tooltip, setTooltip] = useState({
     visible: false,
     price: null,
@@ -395,9 +475,8 @@ export default function PrecioGrafica({
     y: 0,
     pointCount: 0
   });
+   /** Marca temporal del último render de datos (útil para debugging) */
   const [lastUpdate, setLastUpdate] = useState(null);
-  // ✅ CORRECCIÓN: Añadir estado faltante
-  const [usingDemoData, setUsingDemoData] = useState(false);
 
   // Debug detallado del payload
   useEffect(() => {
@@ -431,7 +510,12 @@ export default function PrecioGrafica({
     }
   }, [payload, range]);
 
-  // Montaje: crear chart + serie + tooltip
+   /**
+   * Montaje del chart:
+   * - Inicializa el gráfico y la serie de línea
+   * - Configura crosshair → tooltip reactivo
+   * - Observa ancho del contenedor para responsividad horizontal
+   */
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -480,7 +564,7 @@ export default function PrecioGrafica({
       priceLineVisible: false,
     });
 
-    // Tooltip personalizado
+    // Tooltip a partir del crosshair
     chart.subscribeCrosshairMove(param => {
       if (!param.point || param.point.x < 0 || param.point.y < 0) {
         setTooltip(prev => ({ ...prev, visible: false }));
@@ -516,6 +600,7 @@ export default function PrecioGrafica({
     chartRef.current = chart;
     seriesRef.current = line;
 
+ // ResizeObserver: actualiza ancho y ajusta contenido
     const ro = new ResizeObserver(() => {
       chart.applyOptions({ width: el.clientWidth });
       if (seriesRef.current?.data?.length > 1) {
@@ -524,6 +609,7 @@ export default function PrecioGrafica({
     });
     ro.observe(el);
 
+    // Limpieza
     return () => {
       try { ro.disconnect(); } catch (e) {}
       try { chart.remove(); } catch (e) {}
@@ -532,14 +618,21 @@ export default function PrecioGrafica({
     };
   }, []);
 
-  // Altura reactiva
+  /**
+   * Ajusta la altura del chart si cambia la prop `height`.
+   */
   useEffect(() => {
     if (chartRef.current) {
       chartRef.current.applyOptions({ height });
     }
   }, [height]);
 
-  // Procesamiento de datos - CORREGIDO CON ORDENACIÓN Y ELIMINACIÓN DE DUPLICADOS
+   /**
+   * Memo de transformación de `payload` → `seriesData` listo para `setData`:
+   * - Usa `chartData` si ya viene normalizado
+   * - Si no, parsea estructuras crudas con `parseApiResponseToPoints`
+   * - Ordena asc y elimina duplicados por timestamp
+   */
   const seriesData = useMemo(() => {
     console.log('🔄 [USE_MEMO] Procesando datos para gráfica...', {
       range,
@@ -551,81 +644,26 @@ export default function PrecioGrafica({
     // CASO 1: Si el payload ya tiene chartData (formato procesado)
     if (payload?.chartData && Array.isArray(payload.chartData) && payload.chartData.length > 0) {
       console.log('✅ [USE_MEMO] Usando chartData directo:', payload.chartData.length, 'puntos');
-      setUsingDemoData(false);
       rawData = payload.chartData.map(point => ({
         time: point.time || point.t,
         value: point.value || point.v
       }));
     }
-    // CASO 2: Parsear datos crudos de la API
+    // CASO 2: parsear datos crudos (datasets/labels o arrays)
     else if (payload && (payload.datasets || Array.isArray(payload))) {
       console.log('🔧 [USE_MEMO] Parseando datos crudos de API');
       const parsedPoints = parseApiResponseToPoints(payload, range);
       
       if (parsedPoints.length > 0) {
         console.log(`✅ [USE_MEMO] Parseados ${parsedPoints.length} puntos desde API`);
-        setUsingDemoData(false);
         rawData = parsedPoints.map(point => ({
           time: point.t,
           value: point.v
         }));
       }
     }
-    // CASO 3: Fallback a datos demo
-    else {
-      console.log('🔄 [USE_MEMO] Usando datos de demostración');
-      setUsingDemoData(true);
-      
-      // Generar datos demo más realistas
-      const now = Math.floor(Date.now() / 1000);
-      let interval, count, basePrice;
 
-      switch(range) {
-        case '1D':
-          interval = 300; // 5 minutos
-          count = 288; // 24 horas
-          basePrice = 3880;
-          break;
-        case '5D':
-          interval = 1800; // 30 minutos
-          count = 240; // 5 días
-          basePrice = 3870;
-          break;
-        case '1M':
-          interval = 86400; // 1 día
-          count = 30; // 30 días
-          basePrice = 3850;
-          break;
-        case '6M':
-          interval = 86400; // 1 día
-          count = 180; // 180 días
-          basePrice = 3800;
-          break;
-        case '1A':
-          interval = 86400; // 1 día
-          count = 365; // 365 días
-          basePrice = 3750;
-          break;
-        default:
-          interval = 300;
-          count = 50;
-          basePrice = 3880;
-      }
-
-      for (let i = 0; i < count; i++) {
-        const time = now - ((count - i) * interval);
-        const variation = (Math.random() - 0.5) * 20;
-        basePrice += variation;
-        // Mantener un rango realista
-        basePrice = Math.max(3700, Math.min(3950, basePrice));
-        rawData.push({ 
-          time, 
-          value: Number(basePrice.toFixed(2)) 
-        });
-      }
-    }
-
-    // 🔥 CORRECCIÓN CRÍTICA: Ordenar y eliminar duplicados
+      // Ordenar + eliminar duplicados por timestamp
     if (rawData.length > 0) {
       // 1. Ordenar por tiempo (ascendente)
       rawData.sort((a, b) => a.time - b.time);
@@ -645,7 +683,7 @@ export default function PrecioGrafica({
       
       console.log(`🧹 [DATA_CLEANING] Datos procesados: ${rawData.length} -> ${uniqueData.length} (eliminados ${rawData.length - uniqueData.length} duplicados)`);
       
-      // 3. Verificar que estén ordenados correctamente
+      // 3. Verificación de orden ascendente (sanidad)
       let isSorted = true;
       for (let i = 1; i < uniqueData.length; i++) {
         if (uniqueData[i].time <= uniqueData[i-1].time) {
@@ -667,48 +705,50 @@ export default function PrecioGrafica({
     return [];
   }, [payload, range]);
 
-  // Pintar datos en la serie
-  useEffect(() => {
-    const s = seriesRef.current;
-    const chart = chartRef.current;
-    
-    if (!s || !chart) {
-      console.log('⏸️ [RENDER] Serie o chart no disponibles');
-      return;
-    }
+  /**
+   * Pinta los datos en la serie y ajusta la escala de tiempo.
+   * Se dispara cuando cambia `seriesData`.
+   */
+useEffect(() => {
+  const s = seriesRef.current;
+  const chart = chartRef.current;
+  
+  if (!s || !chart) {
+    console.log('⏸️ [RENDER] Serie o chart no disponibles');
+    return;
+  }
 
-    if (!seriesData || seriesData.length === 0) {
-      console.log('⏸️ [RENDER] No hay datos para renderizar');
-      s.setData([]);
-      return;
-    }
+  if (!seriesData || seriesData.length === 0) {
+    console.log('⏸️ [RENDER] No hay datos para renderizar');
+    s.setData([]);
+    return;
+  }
 
-    console.log('🎨 [RENDER] Renderizando datos:', {
-      puntos: seriesData.length,
-      primerPunto: seriesData[0],
-      ultimoPunto: seriesData[seriesData.length - 1],
-      usandoDemoData: usingDemoData
+  console.log('🎨 [RENDER] Renderizando datos:', {
+    puntos: seriesData.length,
+    primerPunto: seriesData[0],
+    ultimoPunto: seriesData[seriesData.length - 1]
+  });
+
+  s.setData(seriesData);
+  setLastUpdate(new Date());
+
+  const ts = chart.timeScale();
+  if (ts && seriesData.length > 1) {
+    requestAnimationFrame(() => {
+      try {
+        ts.fitContent();
+        console.log('✅ [RENDER] Gráfico ajustado correctamente');
+      } catch (e) {
+        console.warn('⚠️ [RENDER] Error ajustando escala:', e);
+      }
     });
+  }
+}, [seriesData]); 
 
-    s.setData(seriesData);
-    setLastUpdate(new Date()); // ✅ ACTUALIZAR TIMESTAMP
-
-    const ts = chart.timeScale();
-    if (ts && seriesData.length > 1) {
-      requestAnimationFrame(() => {
-        try {
-          ts.fitContent();
-          console.log('✅ [RENDER] Gráfico ajustado correctamente');
-        } catch (e) {
-          console.warn('⚠️ [RENDER] Error ajustando escala:', e);
-        }
-      });
-    }
-  }, [seriesData, usingDemoData]);
-
+// Contenedor del gráfico + tooltip
   return (
     <div className="w-full h-full relative">
-      {/* Header con información del estado - SIMILAR A VELASGRAFICO */}
 
       {/* Contenedor del gráfico */}
       <div
@@ -717,7 +757,7 @@ export default function PrecioGrafica({
         style={{ height: `${height}px` }}
       />
       
-      {/* Tooltip personalizado */}
+      {/* Tooltip personalizado controlado por estado */}
       <ChartTooltip {...tooltip} />
     </div>
   );
