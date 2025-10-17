@@ -22,19 +22,24 @@ import Link from "next/link";
 import { FiMenu } from "react-icons/fi";
 import { FaDollarSign, FaCalendarAlt, FaTable } from "react-icons/fa";
 
+const STORAGE_KEY = "sidebar:collapsed";
 /**
  * Sidebar recibe un prop `onCollapseChange` para notificar el estado del colapso.
  */
 export default function Sidebar({ onCollapseChange }) {
+
   // Estado de colapso del sidebar
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+  if (typeof window === "undefined") return true;
+  const v = window.localStorage.getItem(STORAGE_KEY);
+  return v ? v === "1" : true;
+});
 /**
  * Efecto: Cada vez que el sidebar cambio de estado, notifica al Layout padre.
  */
   useEffect(() => {
-    if (onCollapseChange) {
-      onCollapseChange(collapsed);
-    }
+    try { window.localStorage.setItem(STORAGE_KEY, collapsed ? "1" : "0"); } catch {}
+    onCollapseChange?.(collapsed);
   }, [collapsed, onCollapseChange]);
 
 
@@ -58,7 +63,12 @@ export default function Sidebar({ onCollapseChange }) {
           <img src="/minilogo.png" alt="Mini Logo" className="h-8 w-8" />
         )}
         {/**Botón colapsar/expandir */}
-        <button onClick={() => setCollapsed(!collapsed)} className="text-white">
+        <button 
+        onClick={() => setCollapsed((v) => !v)}
+        className= "text-white"
+        aria-label="Alternar sidebar"
+        title={collapsed ? "Expandir" : "Colapsar"}
+        >
           <FiMenu size={20} />
         </button>
       </div>
