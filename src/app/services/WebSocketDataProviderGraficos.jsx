@@ -1,4 +1,8 @@
-// src/app/services/WebSocketDataProviderGraficos.js
+/**
+ * src/app/services/WebSocketDataProviderGraficos.jsx
+ * -- Juan Jose Peña Quiñonez
+ * -- CC: 1000273604
+ */
 "use client";
 
 /**

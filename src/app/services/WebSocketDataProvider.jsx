@@ -1,4 +1,6 @@
+//src/app/services/WebSocketDataProvider.jsx
 "use client";
+
 import React, {
   createContext,
   useContext,
@@ -8,8 +10,29 @@ import React, {
 } from "react";
 import { tokenServices, webSocketServices } from "./socketService";
 
+/**
+ * Contexto global para exponer datos provenientes del WebSocket:
+ *  - dataById: último payload por id.
+ *  - dataByHour: agregados por hora (especialmente para id = 1007).
+ *  - chartById: estructura estilo Chart.js por id y lapse.
+ *  - request: helper para enviar solicitudes al WS.
+ *  - updateData: actualización manual de estado (compat). 
+ */
+
 const WebSocketDataContext = createContext();
+/** Hook de acceso al contexto del WebSocket. */
 export const useWebSocketData = () => useContext(WebSocketDataContext);
+
+/**
+ * Parser del payload "string raro" de id=1000.
+ * Extrae:
+ *  - prices: number[]
+ *  - amounts: number[]
+ *  - labels: string[]
+ * Retorna null si no se encuentra la estructura esperada.
+ * @param {string} dataStr
+ * @returns {{prices:number[], amounts:number[], labels:string[]}|null}
+ */
 
 // -------------------- 1000 util (string raro) --------------------
 const ChartData = (dataStr) => {
@@ -40,6 +63,17 @@ const ChartData = (dataStr) => {
   };
 };
 
+/**
+ * Normalizador del tick para id=1007.
+ * Admite múltiples formatos para números y tiempos:
+ *  - time: unix seconds, "HH:MM(:SS)" (zona America/Bogota), "YYYY-MM-DD HH:MM(:SS)", ISO u otros parseables.
+ *  - close: toma la primera coincidencia en close/cierre/last/price/valor.
+ *  - avg: promedio opcional.
+ * Devuelve null si no hay time/close válidos.
+ * @param {any} source
+ * @returns {{time:number, close:number, avg:number|null}|null}
+ */
+
 // -------------------- 1007 normalizador --------------------
 function normalizeTick1007(source) {
   if (!source) return null;
@@ -62,7 +96,7 @@ function normalizeTick1007(source) {
     if (typeof t === "string") {
       const s = t.trim();
 
-      // soporta "0 8:01:57" u otras basuras antes de HH:MM(:SS)
+    // soporta "0 8:01:57" u otras basuras antes de HH:MM(:SS)
       const m = s.match(/(\d{1,2}:\d{2}(?::\d{2})?)\s*$/);
       if (m) {
         const hhmmss = m[1].length === 5 ? `${m[1]}:00` : m[1];
@@ -75,7 +109,7 @@ function normalizeTick1007(source) {
         return Number.isFinite(ts) ? ts : null;
       }
 
-      // YYYY-MM-DD [HH:MM(:SS)]
+    // YYYY-MM-DD [HH:MM(:SS)]
       if (/^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/.test(s)) {
         const iso = s.replace(" ", "T");
         const withSec = iso.length === 16 ? iso + ":00" : iso;
@@ -97,14 +131,22 @@ function normalizeTick1007(source) {
   return { time, close, avg };
 }
 
+/**
+ * Proveedor de datos en tiempo real vía WebSocket.
+ * - Realiza autenticación para obtener token.
+ * - Conecta al WS y enruta mensajes por id.
+ * - Normaliza ciertas estructuras (1000, 1007) y guarda payloads en estado global.
+ */
 export const WebSocketDataProvider = ({ children }) => {
   const [dataById, setDataById] = useState({});
   const [dataByHour, setDataByHour] = useState({});
   const [chartById, setChartById] = useState({});
 
-  // -------------------- connect & route --------------------
+// Conexión y ruteo de mensajes entrantes
   useEffect(() => {
     const connectWebSocket = async () => {
+  // RECOMENDACIÓN: no hardcodear credenciales en cliente
+  // Mover a una API route que devuelva el token al cliente.
       const username = "sysdev";
       const password = "$MasterDev1972*";
       localStorage.removeItem("auth-token");
@@ -123,13 +165,14 @@ export const WebSocketDataProvider = ({ children }) => {
                 : parsed.id;
             if (!pid) return;
 
-            // --- 1007: normalizar y guardar SOLO si trae time/close ---
+        // --- 1007: normalizar y guardar SOLO si trae time/close ---
             if (pid === 1007) {
               const tick =
                 normalizeTick1007(parsed) ||
                 normalizeTick1007(parsed.data ? parsed : { data: parsed });
               if (tick) {
                 setDataById((p) => ({ ...p, 1007: tick }));
+            // Agrega un snapshot por hora si no existe
                 try {
                   const hour = new Intl.DateTimeFormat("es-CO", {
                     hour: "2-digit",
@@ -149,7 +192,7 @@ export const WebSocketDataProvider = ({ children }) => {
                   );
                 }
               }
-              return; // ⛔️ evita caer al bloque genérico
+              return; // evita caer al bloque genérico
             }
 
             // --- 1000 intradía: string raro ---
@@ -179,7 +222,7 @@ export const WebSocketDataProvider = ({ children }) => {
               return;
             }
 
-            // --- 1001/1002/1004: Chart.js-like (data.data) ---
+          // --- 1001/1002/1004: Chart.js-like (data.data) ---
             if (pid === 1001 || pid === 1002 || pid === 1004) {
               const lapse = (
                 parsed.lapse ||
@@ -221,7 +264,7 @@ export const WebSocketDataProvider = ({ children }) => {
               return;
             }
 
-            // --- genérico: guarda lo demás como { [pid]: parsed.data } ---
+          // --- genérico: guarda lo demás como { [pid]: parsed.data } ---
             if (parsed.data) {
               setDataById((prev) => ({ ...prev, [pid]: parsed.data }));
             }
@@ -241,7 +284,7 @@ export const WebSocketDataProvider = ({ children }) => {
     connectWebSocket();
   }, []);
 
-  // debug
+ // Debug: expone estado global para inspección manual
   useEffect(() => {
     window._ws = { dataById, chartById };
     console.log("[WS state]", {
@@ -252,7 +295,10 @@ export const WebSocketDataProvider = ({ children }) => {
     });
   }, [dataByHour, chartById]);
 
-  // request helper
+    /**
+   * Envía un payload al WebSocket.
+   * @param {{id:number, lapse?:string, [k:string]:any}} [opts]
+   */
   const request = useCallback(({ id, lapse = "1D", ...extra } = {}) => {
     if (!id) return;
     const payload = { id, lapse, ...extra };
@@ -261,7 +307,12 @@ export const WebSocketDataProvider = ({ children }) => {
     } catch {}
   }, []);
 
-  // compat
+    /**
+   * Actualiza manualmente dataById (no afecta id=1000).
+   * Si es id=1007 y trae time, agrega snapshot en dataByHour[HH:00] si no existe.
+   * @param {number} id
+   * @param {any} payload
+   */
   const updateData = (id, payload) => {
     if (id === 1000) return;
     setDataById((prev) => ({ ...prev, [id]: payload }));

@@ -1,3 +1,8 @@
+/**
+ * src/app/dashboard/nextday.jsx
+ * -- Juan Jose Peña Quiñonez
+ * -- CC: 1000273604
+ */
 "use client";
 
 /**

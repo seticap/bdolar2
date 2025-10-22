@@ -1,4 +1,8 @@
-// app/components/PrecioGrafica.jsx
+/**
+ * app/components/PrecioGrafica.jsx
+ * -- Juan Jose Peña Quiñonez
+ * -- CC: 1000273604
+ */
 "use client";
 
 /**
@@ -56,11 +60,11 @@ const normalizeNumber = (x) => {
  */
 const hhmmToUnixTodayBogota = (hhmm) => {
   try {
-    console.log(`⏰ [TIME_CONVERSION] Convirtiendo: ${hhmm}`);
+    console.log(` [TIME_CONVERSION] Convirtiendo: ${hhmm}`);
     
     const [hh, mm] = String(hhmm).split(":").map(Number);
     if (!Number.isFinite(hh) || !Number.isFinite(mm) || hh < 0 || hh > 23 || mm < 0 || mm > 59) {
-      console.warn(`❌ [TIME_CONVERSION] Formato inválido: ${hhmm}`);
+      console.warn(` [TIME_CONVERSION] Formato inválido: ${hhmm}`);
       return null;
     }
 
@@ -79,16 +83,16 @@ const hhmmToUnixTodayBogota = (hhmm) => {
       // Fallback: construir con UTC sumando offset
       const fallbackDate = new Date(Date.UTC(year, month, day, hh + 5, mm, 0));
       const timestamp = isNaN(fallbackDate.getTime()) ? null : Math.floor(fallbackDate.getTime() / 1000);
-      console.log(`🔄 [TIME_CONVERSION] Fallback usado: ${timestamp}`);
+      console.log(` [TIME_CONVERSION] Fallback usado: ${timestamp}`);
       return timestamp;
     }
     
     const timestamp = Math.floor(date.getTime() / 1000);
-    console.log(`✅ [TIME_CONVERSION] ${hhmm} -> ${timestamp} (${new Date(timestamp * 1000).toLocaleString()})`);
+    console.log(` [TIME_CONVERSION] ${hhmm} -> ${timestamp} (${new Date(timestamp * 1000).toLocaleString()})`);
     return timestamp;
 
   } catch (error) {
-    console.error(`💥 [TIME_CONVERSION] Error con ${hhmm}:`, error);
+    console.error(` [TIME_CONVERSION] Error con ${hhmm}:`, error);
     return null;
   }
 };
@@ -102,7 +106,7 @@ const hhmmToUnixTodayBogota = (hhmm) => {
 
 const fullDateToUnixBogota = (dateStr) => {
   try {
-    console.log(`📅 [DATE_CONVERSION] Convirtiendo: ${dateStr}`);
+    console.log(` [DATE_CONVERSION] Convirtiendo: ${dateStr}`);
     
     // Intentar diferentes formatos de fecha
     let date;
@@ -119,21 +123,21 @@ const fullDateToUnixBogota = (dateStr) => {
       const [year, month, day] = dateStr.split('-').map(Number);
       date = new Date(Date.UTC(year, month - 1, day, 12 + 5, 0, 0)); // Mediodía Bogotá
     } else {
-      console.warn(`❌ [DATE_CONVERSION] Formato no reconocido: ${dateStr}`);
+      console.warn(` [DATE_CONVERSION] Formato no reconocido: ${dateStr}`);
       return null;
     }
 
     if (isNaN(date.getTime())) {
-      console.warn(`❌ [DATE_CONVERSION] Fecha inválida: ${dateStr}`);
+      console.warn(` [DATE_CONVERSION] Fecha inválida: ${dateStr}`);
       return null;
     }
 
     const timestamp = Math.floor(date.getTime() / 1000);
-    console.log(`✅ [DATE_CONVERSION] ${dateStr} -> ${timestamp}`);
+    console.log(` [DATE_CONVERSION] ${dateStr} -> ${timestamp}`);
     return timestamp;
 
   } catch (error) {
-    console.error(`💥 [DATE_CONVERSION] Error con ${dateStr}:`, error);
+    console.error(` [DATE_CONVERSION] Error con ${dateStr}:`, error);
     return null;
   }
 };
@@ -149,14 +153,14 @@ const fullDateToUnixBogota = (dateStr) => {
 
 const parseApiResponseToPoints = (apiResponse, range) => {
   try {
-    console.log('🔍 [PARSE_API_RESPONSE] Iniciando parseo:', {
+    console.log(' [PARSE_API_RESPONSE] Iniciando parseo:', {
       range,
       tieneResponse: !!apiResponse,
       estructura: Object.keys(apiResponse || {})
     });
 
     if (!apiResponse) {
-      console.warn('❌ [PARSE_API_RESPONSE] Response vacío');
+      console.warn(' [PARSE_API_RESPONSE] Response vacío');
       return [];
     }
 
@@ -165,12 +169,12 @@ const parseApiResponseToPoints = (apiResponse, range) => {
 
     // CASO 1: Estructura típica datasets/labels
     if (apiResponse.datasets && apiResponse.labels) {
-      console.log('📊 [PARSE_API_RESPONSE] Formato datasets/labels detectado');
+      console.log(' [PARSE_API_RESPONSE] Formato datasets/labels detectado');
       
       const datasets = apiResponse.datasets;
       const labels = apiResponse.labels;
 
-      console.log(`📊 [PARSE_API_RESPONSE] Procesando ${labels.length} labels y ${datasets[0]?.data?.length || 0} datos`);
+      console.log(` [PARSE_API_RESPONSE] Procesando ${labels.length} labels y ${datasets[0]?.data?.length || 0} datos`);
 
       for (let i = 0; i < labels.length; i++) {
         const label = labels[i];
@@ -215,14 +219,14 @@ const parseApiResponseToPoints = (apiResponse, range) => {
               v: numericValue
             });
           } else {
-            console.warn(`⚠️ [PARSE_API_RESPONSE] Timestamp duplicado omitido: ${timestamp} (${label})`);
+            console.warn(` [PARSE_API_RESPONSE] Timestamp duplicado omitido: ${timestamp} (${label})`);
           }
         }
       }
     }
     // CASO 2: Array simple de valores
     else if (Array.isArray(apiResponse)) {
-      console.log('📊 [PARSE_API_RESPONSE] Formato array simple detectado');
+      console.log(' [PARSE_API_RESPONSE] Formato array simple detectado');
       const now = Math.floor(Date.now() / 1000);
       
       for (let i = 0; i < apiResponse.length; i++) {
@@ -261,12 +265,12 @@ const parseApiResponseToPoints = (apiResponse, range) => {
     }
     // CASO 3: Datos en otros formatos
     else {
-      console.warn('⚠️ [PARSE_API_RESPONSE] Estructura no reconocida, intentando extraer datos...');
+      console.warn(' [PARSE_API_RESPONSE] Estructura no reconocida, intentando extraer datos...');
       
       const possibleDataPaths = ['data', 'values', 'series', 'chartData', 'points'];
       for (const path of possibleDataPaths) {
         if (apiResponse[path] && Array.isArray(apiResponse[path])) {
-          console.log(`📊 [PARSE_API_RESPONSE] Encontrados datos en: ${path}`);
+          console.log(` [PARSE_API_RESPONSE] Encontrados datos en: ${path}`);
           const arrayData = parseSimpleArrayResponse(apiResponse[path], range);
           // También evitar duplicados en este camino
           const uniqueArrayData = [];
@@ -281,18 +285,18 @@ const parseApiResponseToPoints = (apiResponse, range) => {
         }
       }
 
-      console.warn('❌ [PARSE_API_RESPONSE] No se pudo identificar la estructura de datos');
+      console.warn(' [PARSE_API_RESPONSE] No se pudo identificar la estructura de datos');
       return [];
     }
 
-    console.log(`✅ [PARSE_API_RESPONSE] Parseados ${points.length} puntos (sin duplicados)`);
+    console.log(` [PARSE_API_RESPONSE] Parseados ${points.length} puntos (sin duplicados)`);
     
     // Ordenar por timestamp antes de retornar
     points.sort((a, b) => a.t - b.t);
     return points;
 
   } catch (error) {
-    console.error('💥 [PARSE_API_RESPONSE] Error crítico:', error);
+    console.error(' [PARSE_API_RESPONSE] Error crítico:', error);
     return [];
   }
 };
@@ -467,7 +471,7 @@ export default function PrecioGrafica({
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
   /** Estado del tooltip custom (controlado por crosshair) */
-  const [tooltip, setTooltip] = useState({
+ const [tooltip, setTooltip] = useState({
     visible: false,
     price: null,
     time: '',
@@ -477,10 +481,11 @@ export default function PrecioGrafica({
   });
    /** Marca temporal del último render de datos (útil para debugging) */
   const [lastUpdate, setLastUpdate] = useState(null);
+  
 
   // Debug detallado del payload
   useEffect(() => {
-    console.log('🎯 [PAYLOAD_DETAILED]', {
+    console.log('[PAYLOAD_DETAILED]', {
       tienePayload: !!payload,
       range,
       estructura: payload?.chartData ? 'CHART_DATA' : 
@@ -495,18 +500,18 @@ export default function PrecioGrafica({
     });
 
     if (payload?.chartData) {
-      console.log('📊 [CHART_DATA_SAMPLE]', payload.chartData.slice(0, 3));
+      console.log('[CHART_DATA_SAMPLE]', payload.chartData.slice(0, 3));
     }
     
     if (payload?.datasets) {
-      console.log('📊 [DATASETS_SAMPLE]', {
+      console.log('[DATASETS_SAMPLE]', {
         labels: payload.labels?.slice(0, 5),
         data: payload.datasets?.[0]?.data?.slice(0, 5)
       });
     }
 
     if (Array.isArray(payload)) {
-      console.log('📊 [ARRAY_SAMPLE]', payload.slice(0, 5));
+      console.log('[ARRAY_SAMPLE]', payload.slice(0, 5));
     }
   }, [payload, range]);
 
@@ -634,7 +639,7 @@ export default function PrecioGrafica({
    * - Ordena asc y elimina duplicados por timestamp
    */
   const seriesData = useMemo(() => {
-    console.log('🔄 [USE_MEMO] Procesando datos para gráfica...', {
+    console.log(' [USE_MEMO] Procesando datos para gráfica...', {
       range,
       tienePayload: !!payload
     });
@@ -643,7 +648,7 @@ export default function PrecioGrafica({
 
     // CASO 1: Si el payload ya tiene chartData (formato procesado)
     if (payload?.chartData && Array.isArray(payload.chartData) && payload.chartData.length > 0) {
-      console.log('✅ [USE_MEMO] Usando chartData directo:', payload.chartData.length, 'puntos');
+      console.log(' [USE_MEMO] Usando chartData directo:', payload.chartData.length, 'puntos');
       rawData = payload.chartData.map(point => ({
         time: point.time || point.t,
         value: point.value || point.v
@@ -651,11 +656,11 @@ export default function PrecioGrafica({
     }
     // CASO 2: parsear datos crudos (datasets/labels o arrays)
     else if (payload && (payload.datasets || Array.isArray(payload))) {
-      console.log('🔧 [USE_MEMO] Parseando datos crudos de API');
+      console.log(' [USE_MEMO] Parseando datos crudos de API');
       const parsedPoints = parseApiResponseToPoints(payload, range);
       
       if (parsedPoints.length > 0) {
-        console.log(`✅ [USE_MEMO] Parseados ${parsedPoints.length} puntos desde API`);
+        console.log(` [USE_MEMO] Parseados ${parsedPoints.length} puntos desde API`);
         rawData = parsedPoints.map(point => ({
           time: point.t,
           value: point.v
@@ -677,24 +682,24 @@ export default function PrecioGrafica({
           seenTimestamps.add(point.time);
           uniqueData.push(point);
         } else {
-          console.warn(`⚠️ [DATA_CLEANING] Duplicado eliminado: timestamp ${point.time}`);
+          console.warn(` [DATA_CLEANING] Duplicado eliminado: timestamp ${point.time}`);
         }
       }
       
-      console.log(`🧹 [DATA_CLEANING] Datos procesados: ${rawData.length} -> ${uniqueData.length} (eliminados ${rawData.length - uniqueData.length} duplicados)`);
+      console.log(`[DATA_CLEANING] Datos procesados: ${rawData.length} -> ${uniqueData.length} (eliminados ${rawData.length - uniqueData.length} duplicados)`);
       
       // 3. Verificación de orden ascendente (sanidad)
       let isSorted = true;
       for (let i = 1; i < uniqueData.length; i++) {
         if (uniqueData[i].time <= uniqueData[i-1].time) {
           isSorted = false;
-          console.error(`❌ [DATA_CLEANING] Error de ordenación en índice ${i}: ${uniqueData[i].time} <= ${uniqueData[i-1].time}`);
+          console.error(` [DATA_CLEANING] Error de ordenación en índice ${i}: ${uniqueData[i].time} <= ${uniqueData[i-1].time}`);
           break;
         }
       }
       
       if (!isSorted) {
-        console.error('❌ [DATA_CLEANING] Los datos no están ordenados correctamente');
+        console.error(' [DATA_CLEANING] Los datos no están ordenados correctamente');
         // Reordenar por si acaso
         uniqueData.sort((a, b) => a.time - b.time);
       }
@@ -714,17 +719,17 @@ useEffect(() => {
   const chart = chartRef.current;
   
   if (!s || !chart) {
-    console.log('⏸️ [RENDER] Serie o chart no disponibles');
+    console.log('[RENDER] Serie o chart no disponibles');
     return;
   }
 
   if (!seriesData || seriesData.length === 0) {
-    console.log('⏸️ [RENDER] No hay datos para renderizar');
+    console.log(' [RENDER] No hay datos para renderizar');
     s.setData([]);
     return;
   }
 
-  console.log('🎨 [RENDER] Renderizando datos:', {
+  console.log(' [RENDER] Renderizando datos:', {
     puntos: seriesData.length,
     primerPunto: seriesData[0],
     ultimoPunto: seriesData[seriesData.length - 1]
@@ -738,9 +743,9 @@ useEffect(() => {
     requestAnimationFrame(() => {
       try {
         ts.fitContent();
-        console.log('✅ [RENDER] Gráfico ajustado correctamente');
+        console.log(' [RENDER] Gráfico ajustado correctamente');
       } catch (e) {
-        console.warn('⚠️ [RENDER] Error ajustando escala:', e);
+        console.warn(' [RENDER] Error ajustando escala:', e);
       }
     });
   }

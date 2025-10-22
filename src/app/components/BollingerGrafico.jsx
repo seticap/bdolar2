@@ -1,4 +1,8 @@
-// app/components/BollingerGrafico.jsx - VERSIÓN CORREGIDA
+/**
+ * app/components/BollingerGrafico.jsx
+ * -- Juan Jose Peña Quiñonez
+ * -- CC: 1000273604
+ */
 "use client";
 
 import { useEffect, useRef } from "react";

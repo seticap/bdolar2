@@ -1,4 +1,57 @@
+/**
+ * src/app/dashboard/spot.jsx
+ * -- Juan Jose Peña Quiñonez
+ * -- CC: 1000273604
+ */
 'use client';
+
+/**
+ * Página "Spot" del dashboard.
+ *
+ * Objetivo:
+ *  - Mostrar un overview del mercado USD/COP en tiempo real.
+ *  - Integrar métricas live (cierre/promedio), gráfico principal y panel de gráficos derivados.
+ *  - Incluir tarjetas informativas y feed de noticias.
+ *
+ * Estructura general:
+ *  <WebSocketDataProvider>           ← proveedor global: expone dataById y request WS
+ *    └─ Wrapper de la página
+ *       ├─ Fila superior (grid):
+ *       │   ├─ Izquierda: <SectionCards />               (tarjetas informativas)
+ *       │   ├─ Centro:    <HeaderStats /> + <DollarChart /> (métricas live + gráfico principal)
+ *       │   └─ Derecha:   <SectionCardsRight />          (tarjetas adicionales)
+ *       ├─ Fila inferior (grid):
+ *       │   ├─ Panel de gráficos (2/3):
+ *       │   │   └─ <WebSocketDataGraficosProvider range={range}>
+ *       │   │       └─ <PrincesPanel range onRangeChange /> (línea, velas, promedios, bollinger)
+ *       │   └─ Columna de noticias (1/3): <NewsPage />
+ *       └─ <Footer />
+ *
+ * Providers:
+ *  - WebSocketDataProvider:
+ *      Provee useWebSocketData() para acceder a dataById (mapa por id de canal).
+ *      En particular, el id 1007 emite ticks en tiempo real con valores { close, avg }.
+ *
+ *  - WebSocketDataGraficosProvider (anidado solo para el panel de gráficos):
+ *      Deriva datos del id 1007 y realiza cargas HTTP/caché para producir bloques consumibles
+ *      por los gráficos (ids lógicos 1001..1004). Recibe `range` (1D/5D/1M/6M/1A)
+ *      para gestionar qué conjunto cargar/mostrar.
+ *
+ * Estado local:
+ *  - range: controla el rango temporal del panel de gráficos (1D por defecto).
+ *
+ * Responsividad (Tailwind):
+ *  - Fila superior usa grid con:
+ *      - base: 1 columna
+ *      - lg:   4 columnas
+ *      - xl:   8 columnas
+ *    Para posicionar izquierda/centro/derecha con spans y starts distintos por breakpoint.
+ *
+ * Dependencias visibles:
+ *  - Footer, PrincesPanel, SectionCards, SectionCardsRight, NewsPage, Card, DollarChart
+ *  - WebSocketDataProvider, useWebSocketData
+ *  - WebSocketDataGraficosProvider
+ */
 
 import Footer from '../../components/Footer'
 import PrincesPanel from "../../components/PrincesPanel";
@@ -15,9 +68,27 @@ import {
 import { WebSocketDataGraficosProvider } from "../../services/WebSocketDataProviderGraficos";
 import { useState } from "react";
 
+/**
+ * HeaderStats
+ *  - Lee datos en vivo del canal WS id = 1007 mediante useWebSicketData().
+ *  - Muestra  2 Métricas principales:
+ *    * CIERRE (close)
+ *    * PROMEDIO (avg)
+ * 
+ * Si no hay datos todavía, muestra "-". 
+ */
+
 function HeaderStats() {
   const { dataById } = useWebSocketData();
-  /** @type {{ close?: number; avg?: number } | undefined} */
+
+  /**
+   *Estructura esperada para dataById["1007"]:
+   * {
+   *  close?: number, // último precio/cierre o tick actual
+   *  avg?: number,  // promedio del periodo actual (definición depende del backend)
+   * } 
+   */
+
   const promedio = dataById["1007"]; // tick en vivo: se espera { close, avg }
 
   return (
@@ -40,9 +111,17 @@ function HeaderStats() {
     </div>
   );
 }
+/**
+ * spotPage
+ *  - Página principal del dashboard Spot.
+ *  - Maneja el estado `range` (1D|5D|1M|6M|1A) para el panel de gráficos.
+ *  - Envuelve el contenido con WebSocketDataProvider (proveedor global de datos).
+ *  - Sección superior: tarjetas informativas + métricas en vivo + gráfico central.
+ *  - Sección inferior: panel de gráficos (con provider dedicado) + noticias.
+ */
 
 export default function spotPage() {
-
+/** Rango temporal para el panel de gráficos. */
   const [range, setRange] = useState("1D");
  return (
     <WebSocketDataProvider>
@@ -58,6 +137,7 @@ export default function spotPage() {
           <div className="xl:col-span-4 xl:col-start-3 lg:col-span-2 lg:col-start-2 top-8">
             <HeaderStats />
             <div className="lg:row-span-4">
+              {/* Gráfico principal (fuera del provider de gráficos derivados) */}
               <DollarChart />
             </div>
           </div>
@@ -74,12 +154,17 @@ export default function spotPage() {
             {/* Panel de gráficos (2/3 del ancho en ≥lg) */}
             <section className="lg:col-span-2">
               <div className="rounded-xl border border-slate-700 bg-[#0d0f16]">
-                {/* Provider DEDICADO a los gráficos, derivando 1007 → 1001..1004 */}
+                {/* 
+                  Provider DEDICADO a los gráficos:
+                    - Consume el tick 1007 y/o carga HTTP para construir bloques para:
+                        1001 (línea), 1002(promedios), 1003(velas), 1004(bollinger).
+                    - El prop `range` define qué periodo se visualiza/carga.
+                */}
                 <WebSocketDataGraficosProvider range={range}>
                   <PrincesPanel
                     height={520}
                     range={range}
-                    onRangeChange={setRange}
+                    onRangeChange={setRange} // Cambia el rango desde tabs/controles del panel
                   />
                 </WebSocketDataGraficosProvider>
               </div>

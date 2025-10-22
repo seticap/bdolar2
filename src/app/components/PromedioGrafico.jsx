@@ -1,4 +1,8 @@
-// app/components/PromedioGrafico.jsx
+/**
+ * app/components/PromedioGrafico.jsx
+ * -- Juan Jose Peña Quiñonez
+ * -- CC: 1000273604
+ */
 "use client";
 
 /**
