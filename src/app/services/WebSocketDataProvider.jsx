@@ -165,6 +165,7 @@ export const WebSocketDataProvider = ({ children }) => {
                 : parsed.id;
             if (!pid) return;
 
+
         // --- 1007: normalizar y guardar SOLO si trae time/close ---
             if (pid === 1007) {
               const tick =

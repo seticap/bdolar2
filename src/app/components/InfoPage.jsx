@@ -7,9 +7,6 @@ import { MiniChart } from "./MiniChart";
 
 const InfoPage = () => {
   const { empresas, indices } = useInfoData();
-  // console.log("empresas", empresas);
-  // console.log("indices", indices);
-  //console.log("noticias", noticias)
 
   return (
     <div className="w-full grid grid-cols-1 lg:grid-cols-6 gap-4 px-4 sm:px-6 bg-backgroundtwo py-4 sm:py-[10%]">
@@ -28,7 +25,7 @@ const InfoPage = () => {
               <div
                 key={i}
                 className={`flex justify-between py-1 sm:py-2 px-1 sm:px-2 border-b border-black ${
-                  i % 2 === 0 ? "bg-black bg-opacity-20" : "" // Fondo alternado para mejor legibilidad.
+                  i % 2 === 0 ? "bg-black bg-opacity-20" : ""
                 }`}
               >
                 <span className="w-1/3 truncate text-xs sm:text-base">
