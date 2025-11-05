@@ -1,32 +1,136 @@
-// src/app/dashboard/nexday/page.jsx
-import Footer from '../../components/Footer';
-import PrincesPanel from '../../components/PrincesPanel';
-import { SectionCards } from '../../components/section-cards';
-import NewsPage from '../../components/NewsPage';
+/**
+ * src/app/dashboard/nextday.jsx
+ * -- Juan Jose Peña Quiñonez
+ * -- CC: 1000273604
+ */
+"use client";
 
-export default function NexdayPage() {
+/**
+ * Página principal de "Nexday" (Dashboard).
+ *
+ * Estructura general:
+ *  - Proveedor global de WebSocket (`WebSocketDataProvider`) para datos en vivo de la app.
+ *  - Fila superior con:
+ *      * Tarjetas resumen (izquierda y derecha)
+ *      * Métricas en vivo (HeaderStats) + gráfico principal (DollarChart) al centro
+ *  - Fila inferior con:
+ *      * Panel de gráficos con pestañas (PrincesPanel) dentro de un provider dedicado
+ *        (`WebSocketDataGraficosProvider`) que deriva el canal base hacia 1001..1004
+ *      * Columna de noticias (NewsPage)
+ *  - Footer global
+ *
+ * Esta versión añade documentación y comentarios sin modificar la funcionalidad.
+ */
+
+import Footer from "../../components/Footer";
+import PrincesPanel from "../../components/PrincesPanel";
+import { SectionCards, SectionCardsRight } from "../../components/section-cards";
+import NewsPage from "../../components/NewsPage";
+import { Card } from "../../../components/ui/card";
+import DollarChart from "../../components/DollarChart";
+
+import {
+  WebSocketDataProvider,
+  useWebSocketData,
+} from "../../services/WebSocketDataProvider";
+import { WebSocketDataGraficosProvider } from "../../services/WebSocketDataProviderGraficos";
+import { useState } from "react";
+
+/* ────────────────────────────── Subcomponente ────────────────────────────── */
+/**
+ * HeaderStats
+ * Muestra métricas en vivo (CIERRE y PROMEDIO) a partir del canal `1007`.
+ * Debe renderizarse dentro de `WebSocketDataProvider` para acceder a `useWebSocketData`.
+ */
+function HeaderStats() {
+  const { dataById } = useWebSocketData();
+  /** @type {{ close?: number; avg?: number } | undefined} */
+  const promedio = dataById["1007"]; // tick en vivo: se espera { close, avg }
+
   return (
-    <div className="min-h-screen flex flex-col">
-   
-      <main className="flex-grow bg-[#0c0c14] text-white">
-        <div className="mx-auto w-full max-w-[1600px] px-4 lg:px-6 py-6">
-          {/* En lg+ la grilla tiene 3 columnas; izq ocupa 2 y der 1 */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            {/* IZQUIERDA: cards + gráfico */}
-            <div className="lg:col-span-2 space-y-6">
-              <SectionCards />
-              <PrincesPanel height={520} />
-            </div>
+    <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-16 px-1">
+      {/* Card: CIERRE */}
+      <Card className="min-w-[230px] w-auto flex-shrink-0 h-28 flex flex-col justify-start pt-4 items-center text-green-600 bg-custom-colortwo border-none">
+        <h3 className="text-xl text-white">CIERRE</h3>
+        <h1 className="text-5xl font-bold mt-0 leading-1">
+          {promedio?.close ?? "-"}
+        </h1>
+      </Card>
 
-            {/* DERECHA: noticias (misma altura visual que el gráfico) */}
+      {/* Card: PROMEDIO */}
+      <Card className="min-w-[230px] w-auto flex-shrink-0 h-28 flex flex-col justify-start pt-4 items-center text-red-600 bg-custom-colortwo border-none">
+        <h3 className="text-xl text-white">PROMEDIO</h3>
+        <h1 className="text-5xl font-bold mt-0 leading-1">
+          {promedio?.avg ?? "-"}
+        </h1>
+      </Card>
+    </div>
+  );
+}
+
+/* ──────────────────────────────── Página ───────────────────────────────── */
+/**
+ * NexdayPage
+ * Envuelve toda la UI con `WebSocketDataProvider` y gestiona el `range`
+ * compartido para el panel de gráficos.
+ */
+export default function NexdayPage() {
+  // Rango temporal compartido para los gráficos (1D, 5D, 1M, 6M, 1A)
+  const [range, setRange] = useState("1D");
+
+  return (
+    <WebSocketDataProvider>
+      <div className="bg-backgroundtwo">
+        {/* ───────────── Fila superior: cards izq + chart centro + cards der ───────────── */}
+        <div className="grid grid-cols-1 xl:grid-cols-8 lg:grid-cols-4 gap-6 w-full mx-auto p-1 py-6">
+          {/* Columna izquierda: tarjetas informativas */}
+          <div className="xl:col-span-2 lg:col-span-1">
+            <SectionCards />
+          </div>
+
+          {/* Columna central: métricas en vivo + gráfico principal */}
+          <div className="xl:col-span-4 xl:col-start-3 lg:col-span-2 lg:col-start-2 top-8">
+            <HeaderStats />
+            <div className="lg:row-span-4">
+              <DollarChart />
+            </div>
+          </div>
+
+          {/* Columna derecha: tarjetas informativas adicionales */}
+          <div className="xl:col-span-2 xl:col-start-7 lg:col-span-1 lg:col-start-4">
+            <SectionCardsRight />
+          </div>
+        </div>
+
+        {/* ───────────── Fila inferior: panel de gráficos + noticias ───────────── */}
+        <div className="w-full mx-auto px-1 lg:px-6 pb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Panel de gráficos (2/3 del ancho en ≥lg) */}
+            <section className="lg:col-span-2">
+              <div className="rounded-xl border border-slate-700 bg-[#0d0f16]">
+                {/* Provider DEDICADO a los gráficos, derivando 1007 → 1001..1004 */}
+                <WebSocketDataGraficosProvider range={range}>
+                  <PrincesPanel
+                    height={520}
+                    range={range}
+                    onRangeChange={setRange}
+                  />
+                </WebSocketDataGraficosProvider>
+              </div>
+            </section>
+
+            {/* Columna de noticias (1/3 del ancho en ≥lg) */}
             <aside className="lg:col-span-1">
-              <NewsPage height={520} />
+              <div className="rounded-xl border border-slate-700 bg-[#0d0f16]">
+                <NewsPage height={520} />
+              </div>
             </aside>
           </div>
         </div>
-      </main>
+      </div>
 
+      {/* Footer global */}
       <Footer />
-    </div>
+    </WebSocketDataProvider>
   );
 }

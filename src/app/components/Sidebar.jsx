@@ -2,18 +2,18 @@
  * Sidebar.jsx
  * -- Juan Jose Peña Quiñonez
  * -- Cc:1000273604
- *  Componente de barr lateral izquierda para navegacion del dashboard.
- *  Admite colapso dinámico y notifica su estado al Layout superior mediante el prop `onCollapseChange`.
+ * Componente de barra lateral izquierda para navegacion del dashboard.
+ * Admite colapso dinámico y notifica su estado al Layout superior mediante el prop `onCollapseChange`.
  * 
- *   Funcionalidades:
- *    - Alterna entre estado expandido (`w-64`) y colapsado (`w-20`)
- *    - Usa íconos (React Icons) para representar las rutas
- *    - Notifica cambios de colapso al componente padre (Layout)
- *    - Responsive-friendly (se adapta a Logos y espacio)
+ * Funcionalidades:
+ *  - Alterna entre estado expandido (`w-64`) y colapsado (`w-20`)
+ *  - Usa íconos (React Icons) para representar las rutas
+ *  - Notifica cambios de colapso al componente padre (Layout)
+ *  - Responsive-friendly (se adapta a Logos y espacio)
  * 
- *   Dependencias:
- *    - `next/link`: para navegación
- *    - `react-icons`: FiMenu, FaDollarSign, FaCalendarAlt, Fatable
+ * Dependencias:
+ *  - `next/link`: para navegación
+ *  - `react-icons`: FiMenu, FaDollarSign, FaCalendarAlt, Fatable
  */
 "use client";
 
@@ -22,21 +22,47 @@ import Link from "next/link";
 import { FiMenu } from "react-icons/fi";
 import { FaDollarSign, FaCalendarAlt, FaTable } from "react-icons/fa";
 
+const STORAGE_KEY = "sidebar:collapsed";
+
 /**
  * Sidebar recibe un prop `onCollapseChange` para notificar el estado del colapso.
  */
 export default function Sidebar({ onCollapseChange }) {
-  // Estado de colapso del sidebar
-  const [collapsed, setCollapsed] = useState(false);
-/**
- * Efecto: Cada vez que el sidebar cambio de estado, notifica al Layout padre.
- */
-  useEffect(() => {
-    if (onCollapseChange) {
-      onCollapseChange(collapsed);
-    }
-  }, [collapsed, onCollapseChange]);
+  // Estado de colapso del sidebar - inicializado siempre como true
+  const [collapsed, setCollapsed] = useState(true);
+  // Estado para manejar si el componente ya se montó en el cliente
+  const [mounted, setMounted] = useState(false);
 
+  /**
+   * Efecto: Solo se ejecuta en el cliente después del montaje
+   */
+  useEffect(() => {
+    setMounted(true);
+    
+    // Recuperar estado del localStorage solo en el cliente
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY);
+      if (stored !== null) {
+        setCollapsed(stored === "1");
+      }
+    } catch (error) {
+      console.error("Error accessing localStorage:", error);
+    }
+  }, []);
+
+  /**
+   * Efecto: Cada vez que el sidebar cambie de estado, notifica al Layout padre y guarda en localStorage
+   */
+  useEffect(() => {
+    if (!mounted) return; // No hacer nada hasta que el componente esté montado en el cliente
+    
+    try {
+      window.localStorage.setItem(STORAGE_KEY, collapsed ? "1" : "0");
+    } catch (error) {
+      console.error("Error saving to localStorage:", error);
+    }
+    onCollapseChange?.(collapsed);
+  }, [collapsed, onCollapseChange, mounted]);
 
   return (
     <aside
@@ -58,7 +84,12 @@ export default function Sidebar({ onCollapseChange }) {
           <img src="/minilogo.png" alt="Mini Logo" className="h-8 w-8" />
         )}
         {/**Botón colapsar/expandir */}
-        <button onClick={() => setCollapsed(!collapsed)} className="text-white">
+        <button 
+          onClick={() => setCollapsed((v) => !v)}
+          className="text-white"
+          aria-label="Alternar sidebar"
+          title={collapsed ? "Expandir" : "Colapsar"}
+        >
           <FiMenu size={20} />
         </button>
       </div>
@@ -80,7 +111,7 @@ export default function Sidebar({ onCollapseChange }) {
           </Link>
           {/**Enlace 2: Next day USD/COP */}
           <Link
-            href= "../dashboard/nextday"
+            href="../dashboard/nextday"
             className="flex items-center space-x-4 hover:text-red-500 transition-colors"
           >
             <FaCalendarAlt size={18} />

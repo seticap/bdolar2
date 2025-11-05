@@ -6,6 +6,10 @@ import dynamic from "next/dynamic";
 import { useDailySheets } from "../services/useDailySheets";
 import { useIntradaySheets } from "../services/IntradaySheetsProvider";
 
+/**
+ * Gráfico dinámico (client-only). Se desactiva SSR porque el componente
+ * (o sus dependencias) requieren `window`.
+ */
 const GraficoInteractivo1 = dynamic(() => import("./CakeCount"), {
   ssr: false,
 });
@@ -21,6 +25,9 @@ export function SectionCards() {
 
   const { yesterday } = useDailySheets();
 
+  /**
+   * Normaliza un número que puede venir como string con comas
+   */
   const limpiarNumero = (valor) => {
     if (typeof valor === "string") {
       return parseFloat(valor.replace(/,/g, ""));
@@ -58,10 +65,10 @@ export function SectionCards() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-600">
-                  <th className="text-left pb-2 w-auto"></th>
-                  <th className="text-right pb-2 w-auto">HOY</th>
-                  <th className="text-right pb-2 w-auto">AYER</th>
-                  <th className="text-right pb-2 w-auto">VAR%</th>
+                  <th className="text-left pb-2 w-auto text-gray-300"></th>
+                  <th className="text-right pb-2 w-auto text-gray-300">HOY</th>
+                  <th className="text-right pb-2 w-auto text-gray-300">AYER</th>
+                  <th className="text-right pb-2 w-auto text-gray-300">VAR%</th>
                 </tr>
               </thead>
               <tbody>
@@ -118,8 +125,8 @@ export function SectionCards() {
             <table className="w-full text-sm min-w-[225px]">
               <thead>
                 <tr className="border-b border-gray-600">
-                  <th className="text-left w-auto"></th>
-                  <th className="text-center w-auto">HOY</th>
+                  <th className="text-left w-auto text-gray-300"></th>
+                  <th className="text-center w-auto text-gray-300">HOY</th>
                 </tr>
               </thead>
               <tbody>
@@ -149,15 +156,9 @@ export function SectionCards() {
             <table className="w-full text-sm min-w-[230px] border-separate border-spacing-y-2 sm:border-spacing-y-1">
               <thead>
                 <tr>
-                  <th className="text-center border-gray-600 border-b px-2 py-1">
-                    HORA
-                  </th>
-                  <th className="text-center border-gray-600 border-b px-2 py-1">
-                    PROMEDIO
-                  </th>
-                  <th className="text-center border-gray-600 border-b px-2 py-1">
-                    CIERRE
-                  </th>
+                  <th className="text-center border-gray-600 border-b px-2 py-1 text-gray-300">HORA</th>
+                  <th className="text-center border-gray-600 border-b px-2 py-1 text-gray-300">PROMEDIO</th>
+                  <th className="text-center border-gray-600 border-b px-2 py-1 text-gray-300">CIERRE</th>
                 </tr>
               </thead>
               <tbody>
@@ -186,16 +187,22 @@ export function SectionCards() {
   );
 }
 
+/**
+ * Sección derecha: gráfico, últimas transacciones y ultimas notificaciones.
+ * Obtiene las operaciones del canal "1000".
+ */
 export function SectionCardsRight() {
   const { dataById } = useWebSocketData();
   const datos = dataById["1000"];
+  /** Normaliza la estructura (hora, precio, monto) desde 3 arrays correlacionados*/
   const operaciones =
     datos?.labels?.map((hora, index) => ({
       hora,
       precio: datos.prices[index],
       monto: datos.amounts[index],
     })) || [];
-
+  
+  /** Últimas 6 operaciones para la tabla*/
   const ultimas7 = operaciones.slice(-6);
 
   return (
@@ -229,7 +236,7 @@ export function SectionCardsRight() {
                       <td className="text-right">
                         {operacion.precio?.toFixed(2) || "-"}
                       </td>
-                      <td className="text-right">{operacion.monto || "-"}</td>
+                      <td className="text-right text-white">{operacion.monto || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
