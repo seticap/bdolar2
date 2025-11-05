@@ -91,11 +91,7 @@ const DollarChart = () => {
             return `${hours}:${minutes}`; // Devuelve la hora en formato hh:mm
           },
         },
-        width: isMobile
-          ? window.innerWidth - 40 // Ajuste de ancho en dispositivos móviles
-          : isTablet
-          ? window.innerWidth * 0.9 // Ajuste de ancho en tablets
-          : 1100, // Ancho fijo en escritorio
+        width: chartContainerRef.current.clientWidth,
         height: isMobile ? 400 : isTablet ? 500 : 705, // Ajuste de alto según dispositivo
         leftPriceScale: {
           visible: true, // Muestra la escala de precios a la izquierda
@@ -210,11 +206,7 @@ const DollarChart = () => {
         ) {
           // Aplica nuevas dimensiones según el tipo de dispositivo
           chartRef.current.applyOptions({
-            width: isMobile
-              ? window.innerWidth - 40 // Ancho ajustado para móviles
-              : isTablet
-              ? window.innerWidth * 0.9 // Ancho proporcional para tablets
-              : chartContainerRef.current.clientWidth, // Ancho igual al contenedor en escritorio
+            width: chartContainerRef.current.clientWidth, // Ancho igual al contenedor en escritorio
             height: isMobile
               ? 400 // Altura fija para móviles
               : isTablet
@@ -253,7 +245,7 @@ const DollarChart = () => {
   useEffect(() => {
     // Obtiene el token de autenticación desde el servicio o del almacenamiento local
     const token =
-      tokenServices.getToken() || localStorage.getItem("token-socket");
+      tokenServices.getToken() || localStorage.getItem("auth-token");
     // Si no hay token disponible, muestra error y detiene la ejecución
     if (!token) {
       console.error("Token no disponible");
@@ -280,6 +272,7 @@ const DollarChart = () => {
           const dataStr = parsed.result[0].datos_grafico_moneda_mercado;
 
           // Usa expresiones regulares para encontrar los datos de precios, montos y etiquetas
+          
           const pricesMatch = dataStr.match(/data:\s*\[([^\]]+)\]/);
           const amountsMatches = dataStr.match(/data:\s*\[([^\]]+)\]/g) || [];
           const labelsMatch = dataStr.match(/labels:\s*\[([^\]]+)\]/);
@@ -439,7 +432,6 @@ const DollarChart = () => {
         boxSizing: "border-box",
         display: "flex",
         justifyContent: "center",
-        // alignItems: "stretch",
         height: "100%", // <-- Nuevo
       }}
     >
@@ -449,8 +441,6 @@ const DollarChart = () => {
           width: "100%",
           height: "100%", // <-- Nuevo
           minHeight: "500px",
-          // maxHeight: "100%",
-          maxWidth: "1100px",
           display: "block",
           position: "relative",
           overflow: "hidden",

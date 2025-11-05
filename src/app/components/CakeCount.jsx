@@ -1,16 +1,5 @@
-"use client"; // Ejecion del lado del cliente
+"use client";
 
-/**
- * GraficoInteractivo.jsx
- * 
- * Gráfico de pastel interactivo que muestra distribución de volumen transado.
- * Diseñado para visualización rápida de proporciones con total integrado.
- * 
- * Características:
- * - Gráfico de dona con valor total centrado
- * - Diseño responsive con breakpoints personalizados
- * - Indicadores de compra/venta en el footer
- */
 import * as React from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { Label, Pie, PieChart, ResponsiveContainer } from "recharts";
@@ -37,17 +26,17 @@ export function GraficoInteractivo() {
   return (
     <>
       {/* Card que contiene todo el gráfico */}
-      <Card className="w-full h-full min-h-[250px] @sm:min-h-[300px] @lg:min-h-[320px] p-2 @sm:p-3 text-white bg-custom-colortwo border-none flex flex-col">
+      <Card className="w-full h-full min-h-[200px] p-2 text-white border-none flex flex-col gap-0 bg-custom-colortwo">
         {/* Encabezado de la tarjeta con el título */}
-        <CardHeader className="p-1 @sm:p-2 text-center">
-          <CardTitle className="text-md @sm:text-md font-medium">
+        <CardHeader className="text-center">
+          <CardTitle className="text-md font-medium">
             VOLUMEN TRANSADO
           </CardTitle>
         </CardHeader>
 
         {/* Gráfico en el centro de la card */}
         <CardContent className="flex-1 flex items-center justify-center p-0">
-          <div className="w-full h-full @sm:min-h-[200px] min-h-[180px]">
+          <div className="w-full h-full min-h-[180px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -99,8 +88,8 @@ export function GraficoInteractivo() {
         {/* Footer con indicadores de compra/venta */}
         <CardFooter className="p-1 pt-0 flex justify-between items-start text-[15px] mt-[-10px]">
           {/* Indicador de Compra */}
-          <div className="flex flex-col items-start gap-0">
-            <div className="flex items-center gap-1 text-white justify-center">
+          <div className="flex flex-col items-start">
+            <div className="flex items-center text-white justify-center">
               <TrendingUp className="h-3 w-3" />
               <span>COMPRA</span>
             </div>
@@ -108,8 +97,8 @@ export function GraficoInteractivo() {
           </div>
 
           {/* Indicador de Venta */}
-          <div className="flex flex-col items-end gap-0">
-            <div className="flex items-center gap-1 text-white justify-end">
+          <div className="flex flex-col items-end">
+            <div className="flex items-center text-white justify-end">
               <TrendingDown className="h-3 w-3" />
               <span>VENTA</span>
             </div>

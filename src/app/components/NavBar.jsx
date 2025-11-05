@@ -6,7 +6,12 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button"; // Componente de botón reutilizable
 import { LoginForm } from "./login-form"; // Formulario de inicio de sesión
 import { SigninForm } from "./Sigin-form"; // Formulario de registro
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"; // Componentes para diálogos modales
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"; // Componentes para diálogos modales
 import MobileMenuToggle from "./MobileMenuToggle"; // Ícono de hamburguesa para menú móvil
 
 // Componente principal de la barra de navegación
@@ -19,7 +24,7 @@ const Navbar = () => {
     <nav className="flex items-center justify-between p-2 bg-custom-colortwo text-white z-50">
       {/* Logo con enlace a la página principal */}
       <Link href="/">
-        <img src="logoSet.png" alt="logo" className="max-w-40 max-h-40" />
+        <img src="/logoSet.png" alt="logo" className="max-w-40 max-h-40" />
         {/* 
           - max-w-40 / max-h-40: limita el tamaño del logo 
           - responsive en cualquier dispositivo
@@ -58,21 +63,13 @@ const Navbar = () => {
           </Button>
 
           {/* Diálogo de registro */}
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button
-                variant="link"
-                className="w-full sm:w-auto"
-                onClick={() => setOpenMenu(false)}
-              >
-                REGISTRARSE
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl">
-              <DialogTitle>Registro</DialogTitle>
-              <SigninForm />
-            </DialogContent>
-          </Dialog>
+          <Button
+            variant="link"
+            className="w-full sm:w-auto"
+            onClick={() => setOpenMenu(false)}
+          >
+            <Link href="/register">REGISTRARSE</Link>
+          </Button>
 
           {/* Diálogo de inicio de sesión */}
           <Dialog>
@@ -97,7 +94,7 @@ const Navbar = () => {
             className="text-left w-full sm:w-auto"
             onClick={() => setOpenMenu(false)}
           >
-            <Link href="/">EPAYCO</Link>
+            <Link href="/epayco">EPAYCO</Link>
           </Button>
         </div>
       </div>

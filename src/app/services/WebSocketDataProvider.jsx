@@ -8,6 +8,7 @@ export const useWebSocketData = () => useContext(WebSocketDataContext);
 
 export const WebSocketDataProvider = ({ children }) => {
   const [dataById, setDataById] = useState({});
+  const [dataByHour, setDataByHour] = useState({});
 
   useEffect(() => {
     const connectWebSocket = async () => {
@@ -24,11 +25,8 @@ export const WebSocketDataProvider = ({ children }) => {
         webSocketServices.addListener((data) => {
           try {
             const parsed = typeof data === "string" ? JSON.parse(data) : data;
-            // console.log("🧩 WebSocket message:", parsed);
-            // console.log("data.id:", parsed.id);
 
-            if (!parsed || !parsed.id || !parsed.data) return;
-
+            if (!parsed || !parsed.id) return;
             if (
               parsed.id === 1000 &&
               parsed.result?.[0]?.datos_grafico_moneda_mercado
@@ -67,9 +65,19 @@ export const WebSocketDataProvider = ({ children }) => {
 
     const amountsMatch = amountsMatches[1];
 
-    const prices = pricesMatch[1]?.split(",").map(Number).filter((n) => !isNaN(n));
-    const amounts = amountsMatch.match(/\[([^\]]+)\]/)?.[1]?.split(",").map(Number).filter((n) => !isNaN(n));
-    const labels = labelsMatch[1]?.split(",").map((label) => label.trim().replace(/["']/g, "")).filter(Boolean);
+    const prices = pricesMatch[1]
+      ?.split(",")
+      .map(Number)
+      .filter((n) => !isNaN(n));
+    const amounts = amountsMatch
+      .match(/\[([^\]]+)\]/)?.[1]
+      ?.split(",")
+      .map(Number)
+      .filter((n) => !isNaN(n));
+    const labels = labelsMatch[1]
+      ?.split(",")
+      .map((label) => label.trim().replace(/["']/g, ""))
+      .filter(Boolean);
 
     const minLength = Math.min(prices.length, amounts.length, labels.length);
 
@@ -83,10 +91,24 @@ export const WebSocketDataProvider = ({ children }) => {
   const updateData = (id, payload) => {
     if (id === 1000) return;
     setDataById((prev) => ({ ...prev, [id]: payload }));
+
+    if (id === 1007 && payload.data?.time) {
+      const time = payload.data.time;
+      const hourKey = time.substring(0, 2) + ":00";
+
+      setDataByHour((prev) => {
+        if (prev[hourKey]) return prev;
+
+        return {
+          ...prev,
+          [hourKey]: payload.data,
+        };
+      });
+    }
   };
 
   return (
-    <WebSocketDataContext.Provider value={{ dataById, updateData }}>
+    <WebSocketDataContext.Provider value={{ dataById, updateData, dataByHour }}>
       {children}
     </WebSocketDataContext.Provider>
   );

@@ -120,9 +120,9 @@ export function SigninForm({ className, ...props}){
               <label className="flex gap-2">
                 <input type="checkbox" required />
                 Acepto los{" "}
-                <a href="#" className="underline">
+                <Link href="#" className="underline">
                   Términos y Condiciones
-                </a>
+                </Link>
               </label>
               <label className="flex gap-2">
                 <input type="checkbox" required />
