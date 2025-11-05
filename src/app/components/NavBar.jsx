@@ -26,7 +26,7 @@ const Navbar = () => {
     <nav className="flex items-center justify-between p-2 bg-custom-colortwo text-white z-50">
       {/* Logo con enlace a la página principal */}
       <Link href="/">
-        <img src="logoSet.png" alt="logo" className="max-w-40 max-h-40" />
+        <img src="/logoSet.png" alt="logo" className="max-w-40 max-h-40" />
         {/* 
           - max-w-40 / max-h-40: limita el tamaño del logo 
           - responsive en cualquier dispositivo

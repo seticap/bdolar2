@@ -12,6 +12,7 @@ export const InfoDataProvider = ({ children }) => {
   const [indices, setIndices] = useState([]);
   /** @type {[Noticia[], Function]} */
   const [noticias, setNoticias] = useState([]);
+  const [grafica, setGrafica] = useState([]);
 
   useEffect(() => {
     const fetchEmpresas = async () => {
@@ -57,12 +58,12 @@ export const InfoDataProvider = ({ children }) => {
       }
     };
     const fetchNoticias = async () => {
-  try {
-    const res = await fetch("http://set-fx.com/api/v1/dolar/public/news");
-    const xml = await res.text();
-    const doc = new DOMParser().parseFromString(xml, "text/xml");
+      try {
+        const res = await fetch("http://set-fx.com/api/v1/dolar/public/news");
+        const xml = await res.text();
+        const doc = new DOMParser().parseFromString(xml, "text/xml");
 
-    const items = doc.querySelectorAll("item");
+        const items = doc.querySelectorAll("item");
 
     const news = Array.from(items).map((item) => ({
       title: item.querySelector("title")?.textContent?.trim() || "",
@@ -76,13 +77,15 @@ export const InfoDataProvider = ({ children }) => {
     console.error("La consulta no se pudo completar", e);
   }
 };
+
     fetchEmpresas();
     fetchIndices();
     fetchNoticias();
+    fetchGrafica();
   }, []);
 
   return (
-    <InfoDataContext.Provider value={{ empresas, indices, noticias }}>
+    <InfoDataContext.Provider value={{ empresas, indices, noticias, grafica }}>
       {children}
     </InfoDataContext.Provider>
   );

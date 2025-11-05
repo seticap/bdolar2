@@ -6,6 +6,7 @@ import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { toast } from "react-toastify";
 import ToastProvider from "../components/ToastProvider"; 
 
+
 const COUNTRIES = [
   "Argentina",
   "Alemania",
@@ -311,7 +312,7 @@ const CITIES_BY_COUNTRY = {
 
 function toApiPayload(form) {
   return {
-    UserName: (form.email || "").trim(),
+    UserName: (form.username || "").trim(),
     UserPassword: form.password,
     EmailAddress: (form.email || "").trim(),
     PhoneNumber: (form.phone || "").trim(),
@@ -409,6 +410,7 @@ export default function RegisterPage() {
 
   const sanitizeName = (v) => v.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñÜü' -]/g, "");
   const digitsOnly = (v) => v.replace(/\D/g, "");
+
   const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(v);
   const isStrongPass = (v) =>
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{12,}$/.test(v);
@@ -461,6 +463,11 @@ export default function RegisterPage() {
         if (!isStrongPass(value))
           return "Mín. 12, mayúscula, minúscula, número y especial.";
         return "";
+      case "username":
+        if (!value) return "El usuario es obligatorio.";
+        if (!isUsername(value))
+          return 'Min. 4 , empieza con letra. Solo letras, numeros, ".", "_" o "-".';
+        return "";
       case "confirm":
         if (!value) return "Confirma la contraseña.";
         if (value !== current.password) return "No coincide con la contraseña.";
@@ -469,7 +476,7 @@ export default function RegisterPage() {
         return "";
     }
   };
-
+  /** Valida todos los campos requeridos y reglas de negocio */
   const validateAll = () => {
     const fields = [
       "firstName",
@@ -516,16 +523,17 @@ export default function RegisterPage() {
       );
       return;
     }
-
+    // Normalizaciones
     let nextValue = value;
     if (name === "firstName" || name === "lastName")
       nextValue = sanitizeName(value);
     if (name === "idNumber" || name === "phone") nextValue = digitsOnly(value);
+    if (name === "username") nextValue = sanitizeUsername(value);
 
     const updated = {
       ...form,
       [name]: type === "checkbox" ? checked : nextValue,
-      ...(name === "country" ? { city: "" } : {}),
+      ...(name === "country" ? { city: "" } : {}), // reset de ciudad al cambiar pais
     };
     setForm(updated);
     setFieldError(name, validateField(name, nextValue, updated));
@@ -544,15 +552,14 @@ export default function RegisterPage() {
     }
     setFieldError(name, validateField(name, value));
   };
-
+  /** Envio del formulario ( simulado ) */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!validateAll()) {
-      pushToast("error", "Corrige los campos resaltados e inténtalo de nuevo.");
+      showToast("error", "Corrige los campos resaltados e inténtalo de nuevo.");
       return;
     }
-
     if (!form.aceptaTyC || !form.aceptaDatosFX || !form.aceptaDatosSecurities) {
       setFieldError(
         "policies",
@@ -606,15 +613,37 @@ export default function RegisterPage() {
             firstMsg || data?.message || "No se pudo completar el registro."
           );
         }
-
         throw new Error(
           data?.message || raw || "No se pudo completar el registro."
         );
       }
-      // ---------------------------------------------------------
-
       showToast("success", "Cuenta creada. Revisa tu correo para activar.");
-      setTimeout(() => router.push("/"), 900);
+      console.log("creacion exitosa");
+
+      const user = Array.isArray(data?.payload) ? data.payload[0] : null;
+      const createdId = user?.ID;
+      const email = user?.EmailAddress || form.email;
+      console.log(createdId);
+
+      if (!createdId) {
+        throw new Error("No se recibio el ID de creacion en la respuesta.");
+      }
+
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("verify.id", createdId);
+        sessionStorage.setItem("verify.email", email);
+      }
+
+      setTimeout(
+        () =>
+          router.push(
+            `/verificationcode?id=${encodeURIComponent(
+              createdId
+            )}&email=${encodeURIComponent(email)}`
+          ),
+        900
+      );
+>>>>>>> f3020e429f3926161c28086de2e745b56292a142
     } catch (err) {
       showToast("error", err.message || "Error inesperado");
     } finally {
@@ -622,24 +651,27 @@ export default function RegisterPage() {
       console.log(toApiPayload(form));
     }
   };
-  const citiesForCountry = CITIES_BY_COUNTRY[form.country] || null;
 
+  const citiesForCountry = CITIES_BY_COUNTRY[form.country] || null;
   const inputBase =
-    "w-full h-8 px-2.5 rounded-sm bg-[#1f1f1f] text-white text-[13px] placeholder-gray-500 border border-gray-600 focus:outline-none focus:ring-0 focus:border-gray-400";
+    "w-full h-8 px-2.5 rounded-sm bg-[#1f1f1f] text-white text-[13px] \
+placeholder-gray-500 border border-gray-600 focus:outline-none \
+focus:ring-0 focus:border-gray-400";
 
   return (
     <main className="min-h-screen w-full bg-[#0d0b1d] flex items-center justify-center px-3 sm:px-6 py-6">
       <ToastProvider />
+
       <section className="w-full max-w-4xl lg:max-w-5xl bg-[#1f1f1f] border border-gray-700 rounded-md shadow-sm overflow-hidden max-h-[90vh]">
         <div className="grid grid-cols-1 lg:grid-cols-5">
           <div className="lg:col-span-2 flex items-center justify-center p-5 lg:p-6 bg-[#1f1f1f] border-b border-gray-700 lg:border-b-0 lg:border-r">
-            <a href="/">
+            <Link href="/">
               <img
                 src="/logoSet.png"
                 alt="SET ICAP Logo"
                 className="w-36 sm:w-44 lg:w-52 h-auto"
               />
-            </a>
+            </Link>
           </div>
 
           <div className="lg:col-span-3 p-4 sm:p-5 flex flex-col max-h-[88vh]">
@@ -683,6 +715,7 @@ export default function RegisterPage() {
                   </div>
                   <div>
                     <label className="text-gray-300 text-base block mb-1">
+
                       - Apellido
                     </label>
                     <input
@@ -710,6 +743,7 @@ export default function RegisterPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <div>
                     <label className="text-gray-300 text-base block mb-1">
+
                       - Tipo de Id
                     </label>
                     <select
@@ -724,7 +758,9 @@ export default function RegisterPage() {
                       }`}
                     >
                       <option value="">Seleccione</option>
-                      <option value="cédula ciudadanía">Cédula</option>
+                      <option value="cédula ciudadanía">
+                        Cédula Ciudadanía
+                      </option>
                       <option value="cédula extranjería">
                         Cédula Extranjería
                       </option>
@@ -739,6 +775,7 @@ export default function RegisterPage() {
                   </div>
                   <div>
                     <label className="text-gray-300 text-base block mb-1">
+
                       - Num. Identificación
                     </label>
                     <input
@@ -796,6 +833,7 @@ export default function RegisterPage() {
 
                   <div>
                     <label className="text-gray-300 text-base block mb-1">
+
                       - Ciudad
                     </label>
                     {CITIES_BY_COUNTRY[form.country] ? (
@@ -849,6 +887,7 @@ export default function RegisterPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="text-gray-300 text-base block mb-1">
+
                       - Tipo de Persona
                     </label>
                     <select
@@ -874,6 +913,7 @@ export default function RegisterPage() {
                   </div>
                   <div>
                     <label className="text-gray-300 text-base block mb-1">
+
                       - Empresa
                     </label>
                     <input
@@ -899,6 +939,7 @@ export default function RegisterPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="text-gray-300 text-base block mb-1">
+
                       - Email
                     </label>
                     <input
@@ -923,6 +964,7 @@ export default function RegisterPage() {
                   </div>
                   <div>
                     <label className="text-gray-300 text-base block mb-1">
+
                       - Teléfono
                     </label>
                     <input
@@ -945,6 +987,7 @@ export default function RegisterPage() {
                         {errors.phone}
                       </p>
                     )}
+
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -952,6 +995,7 @@ export default function RegisterPage() {
                     <label className="text-gray-300 text-base block mb-1">
                       - Contraseña
                     </label>
+
                     <div className="relative">
                       <input
                         name="password"
@@ -979,7 +1023,6 @@ export default function RegisterPage() {
                         )}
                       </button>
                     </div>
-
                     {form.password &&
                       (() => {
                         const { label, color, percent } = passwordStrength(
@@ -1003,6 +1046,7 @@ export default function RegisterPage() {
                       })()}
 
                     <p className="text-sm leading-tight text-gray-400 mt-0.5">
+
                       Debe incluir mayúscula, minúscula, número y caracter
                       especial.
                     </p>
@@ -1015,6 +1059,7 @@ export default function RegisterPage() {
 
                   <div>
                     <label className="text-gray-300 text-base block mb-1">
+
                       - Repite contraseña
                     </label>
                     <div className="relative">
@@ -1051,6 +1096,7 @@ export default function RegisterPage() {
                     )}
                   </div>
                 </div>
+
                 <p className="text-gray-300 text-base">
                   Indique los servicios que necesitas:
                 </p>
@@ -1067,6 +1113,7 @@ export default function RegisterPage() {
                     Plataforma Dólar
                   </label>
                   <label className="flex items-center gap-2 text-gray-200 text-sm leading-tight">
+
                     <input
                       type="checkbox"
                       name="interesAnalisis"
@@ -1083,6 +1130,7 @@ export default function RegisterPage() {
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
                   <label className="flex items-start gap-2 text-gray-300 text-sm leading-tight">
+
                     <input
                       type="checkbox"
                       name="aceptaTyC"
@@ -1093,6 +1141,7 @@ export default function RegisterPage() {
                     <span>
                       Acepto los{" "}
                       <a
+
                         href="https://set-icap.com/terminos-y-condiciones.pdf"
                         className="underline"
                       >
@@ -1101,6 +1150,7 @@ export default function RegisterPage() {
                     </span>
                   </label>
                   <label className="flex items-start gap-2 text-gray-300 text-sm leading-tight sm:col-span-2">
+
                     <input
                       type="checkbox"
                       name="aceptaDatosFX"
@@ -1119,6 +1169,7 @@ export default function RegisterPage() {
                     </span>
                   </label>
                   <label className="flex items-start gap-2 text-gray-300 text-sm leading-tight sm:col-span-2">
+
                     <input
                       type="checkbox"
                       name="aceptaDatosSecurities"
@@ -1135,6 +1186,7 @@ export default function RegisterPage() {
                         Políticas de Tratamiento de Datos personales SET-ICAP
                         SECURITIES
                       </a>
+
                     </span>
                   </label>
                 </div>
@@ -1142,7 +1194,6 @@ export default function RegisterPage() {
                   <p className="text-xs text-red-400">{errors.policies}</p>
                 )}
               </div>
-
               <br />
               <div className="-mx-5 sm:-mx-6 sticky bottom-0 bg-[#1f1f1f] border-t border-gray-700 px-5 sm:px-6 pt-1.5 pb-1.5">
                 <button className="w-full bg-[#1f4e85] text-white py-1.5 text-base rounded-sm hover:bg-[#173861] transition-colors disabled:opacity-60">
@@ -1158,6 +1209,59 @@ export default function RegisterPage() {
           </div>
         </div>
       </section>
+
+      {/* Toast modal centrado*/}
+      {toast.show && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed inset-0 z-50 flex items-center justify-center"
+        >
+          <div className="absolute inset-0 bg-black/40" />
+          <div
+            className={`relative mx-4 rounded-md px-6 py-4 shadow-2xl border text-base sm:text-lg font-medium
+              ${
+                toast.type === "success"
+                  ? "bg-green-600 border-green-400 text-white"
+                  : "bg-red-600 border-red-400 text-white"
+              }`}
+          >
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5">
+                {toast.type === "success" ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M20 6L9 17l-5-5"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M18 6L6 18M6 6l12 12"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                )}
+              </span>
+              <div className="text-sm sm:text-base">{toast.message}</div>
+              <button
+                onClick={() => setToast((t) => ({ ...t, show: false }))}
+                className="ml-2 text-white/90 hover:text-white"
+                aria-label="Cerrar notificación"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

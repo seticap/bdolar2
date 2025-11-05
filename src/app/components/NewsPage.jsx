@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useInfoData } from "../services/InfoDataProvider";
+import Link from "next/link";
 
 const NewsPage = () => {
   const [currentSlide, setCurrentSlide] = useState(0)
@@ -23,20 +24,21 @@ const NewsPage = () => {
   };
 
   return (
-    <div className="relative w-full p-4">
+    <div className="relative w-full px-4 py-0">
       <div className="relative">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[300px]">
+
           {gruposNoticias[currentSlide]?.map((noticias, index) => (
             <div
               key={index}
               className=" border-2 border-black rounded-lg p-4 bg-opacity-20 w-full h-full flex flex-col justify-between"
             >
-              <h3 className="text-lg font-bold mb-8">{noticias.title}</h3>
-              <p className="text-gray-300 text-sm mb-3 line-clamp-5">
+              <h3 className="text-lg font-bold mb-5 text-center">{noticias.title}</h3>
+              <p className="text-gray-300 text-sm mb-2 line-clamp-5 text-center">
                 {noticias.description}
               </p>
               <button className="text-blue-400 hover:text-blue-300 text-sm">
-                Leer más...
+                <Link href={noticias.link} target="_blank">Leer más...</Link>
               </button>
             </div>
           ))}
@@ -56,6 +58,7 @@ const NewsPage = () => {
         </button>
       </div>
       <div className="flex justify-center mt-4 space-x-2">
+
         {gruposNoticias.map((_, index) => (
           <button
             key={index}
@@ -68,6 +71,4 @@ const NewsPage = () => {
       </div>
     </div>
   );
-};
-
-export default NewsPage;
+}

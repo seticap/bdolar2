@@ -90,6 +90,9 @@ export default function ResetPasswordPage() {
     "border border-gray-500 focus:outline-none focus:ring-0 focus:border-gray-400 " +
     "text-sm md:text-base";
 
+}
+
+export default function Page() {
   return (
     <main className="min-h-screen bg-[#0d0b1d] flex items-center justify-center p-4 md:p-8">
       <ToastProvider />

@@ -1,5 +1,5 @@
-"use client";
-
+import { Suspense } from "react";
+import VerifyClient from "./VerifyClient";
 import { useState } from "react";
 import Image from "next/image";
 import { toast } from "react-toastify";
@@ -31,7 +31,8 @@ export default function VerifyPage() {
     const value = e.target.value;
     if (/^\d*$/.test(value)) setCode(value);
   };
-
+}
+export default function Page() {
   return (
     <>
       <ToastProvider />
@@ -108,5 +109,6 @@ export default function VerifyPage() {
         </div>
       </div>
     </>
+
   );
 }

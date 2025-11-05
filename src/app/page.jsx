@@ -11,6 +11,7 @@ import DollarChart from './components/DollarChart';
 import Carrousel from './components/Carrousel';
 
 
+
 function nthDow(year, month, dow, n) {
   const first = new Date(year, month, 1);
   const delta = ((7 + dow - first.getDay()) % 7) + (n - 1) * 7;
@@ -143,13 +144,12 @@ export default function LandingPage() {
   return (
     <>
       <NavBar />
-      <Carrousel />
+      <CarrouselEmpresas />
       <div className="bg-backgroundtwo">
-        <div className="grid grid-cols-1 xl:grid-cols-8 lg:grid-cols-4 gap-6 w-full mx-auto p-1">
-          <div className="xl:col-span-2 lg:col-span-1">
+        <div className="grid xl:grid-cols-6 w-full mx-auto p-1">
+          <div className="xl:col-span-1">
             <SectionCards />
           </div>
-
           <div className="xl:col-span-4 xl:col-start-3 lg:grid-cols-2 lg:col-span-2 lg:col-start-2 top-8">
             <div
               className={`
@@ -171,6 +171,7 @@ export default function LandingPage() {
                   ${showHoliday ? 'sm:-translate-x-24' : 'sm:translate-x-0'}
                 `}
               >
+
                 <h3 className="text-xl text-white">CIERRE</h3>
                 <h1 className="text-5xl font-bold mt-0 leading-1">
                   {promedio?.close || '-'}</h1>
@@ -189,11 +190,12 @@ export default function LandingPage() {
               </Card>
             </div>
             <div className="lg:row-span-4">
+
               <DollarChart />
             </div>
           </div>
 
-          <div className="xl:col-span-2 xl:col-start-7 lg:col-span-1 lg:col-start-4">
+          <div className="col-span-1 xl:col-start-6">
             <SectionCardsRight />
           </div>
         </div>

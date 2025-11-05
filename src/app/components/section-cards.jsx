@@ -1,7 +1,6 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BellIcon, Trash2 } from "lucide-react";
 import { useWebSocketData } from "../services/WebSocketDataProvider";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
@@ -9,7 +8,6 @@ import { useEffect, useState } from "react";
 const GraficoInteractivo1 = dynamic(() => import("./CakeCount"), {
   ssr: false,
 });
-
 
 const StockdioForexWidget = () => {
   const [isProduction, setIsProduction] = useState(false);
@@ -112,7 +110,7 @@ export function SectionCards() {
   const precios = dataById["1006"];
   const montos = dataById["1005"];
 
-  const horasFijas = ["09:00", "10:00", "11:00", "12:00"];
+  const { yesterday } = useDailySheets();
 
   const limpiarNumero = (valor) => {
     if (typeof valor === "string") {
@@ -121,14 +119,24 @@ export function SectionCards() {
     return parseFloat(valor);
   };
 
+  const NF2 = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  const toNum = (v) => {
+    if (v === null || v === undefined || v === "-") return NaN;
+    const n = Number(String(v).replace(/,/g, ""));
+    return Number.isFinite(n) ? n : NaN;
+  };
+
+  const fmt2 = (v) => (Number.isFinite(toNum(v)) ? NF2.format(toNum(v)) : "-");
+
   const getVar = (hoy, ayer) => {
-    const numHoy = limpiarNumero(hoy);
-    const numAyer = limpiarNumero(ayer);
-
-    if (isNaN(numHoy) || isNaN(numAyer) || numAyer === 0) return "-";
-
-    const varp = ((numHoy - numAyer) / numAyer) * 100;
-    return varp.toFixed(2);
+    const a = toNum(hoy),
+      b = toNum(ayer);
+    if (!Number.isFinite(a) || !Number.isFinite(b) || b === 0) return "-";
+    return (((a - b) / b) * 100).toFixed(2);
   };
 
   return (
@@ -169,8 +177,8 @@ export function SectionCards() {
           </div>
         </CardContent>
       </Card>
-
       <Card className="flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2">
+
         <CardContent className="p-0">
           <div className="font-bold text-white mb-2">MONTOS USD:</div>
           <div>
@@ -200,7 +208,6 @@ export function SectionCards() {
           </div>
         </CardContent>
       </Card>
-
       <Card className="w-full flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2">
         <CardContent className="p-0">
           <div>
@@ -214,7 +221,7 @@ export function SectionCards() {
               </thead>
               <tbody>
                 {horasFijas.map((hora) => {
-                  const dato = dataByHour[hora] || {};
+                  const row = dataByHour?.[hora] || {};
                   return (
                     <tr key={hora}>
                       <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-2 text-white">{hora}</td>
@@ -235,6 +242,7 @@ export function SectionCards() {
           <StockdioForexWidget />
         </CardContent>
       </Card>
+
     </div>
   );
 }
@@ -252,22 +260,22 @@ export function SectionCardsRight() {
   const ultimas7 = operaciones.slice(-6);
 
   return (
-    <div className="flex flex-wrap justify-center gap-4 px-4 w-full">
-      <div className="flex flex-wrap justify-center gap-4 w-full max-w-[1600px]">
-        <div className="flex-1 min-w-[240px] grow">
+    <div className="flex flex-wrap justify-center w-full">
+      <div className="flex flex-wrap justify-center gap-3 w-full max-w-[1600px]">
+        <div className="flex-1 min-w-[240px] grow mr-2">
           <GraficoInteractivo1 />
         </div>
 
-        <Card className="flex flex-col flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-4">
+        <Card className="flex flex-col flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2 mr-2">
           <CardHeader className="p-0 mb-[-30px]">
             <CardTitle className="text-lg font-semibold">
               Últimas Transacciones
             </CardTitle>
           </CardHeader>
 
-          <CardContent className="p-2">
+          <CardContent className="p-0">
             <div className="overflow-auto scrollbar-custom">
-              <table className="w-full text-xs">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-600 text-gray-400">
                     <th className="text-left pb-1">HORA</th>
@@ -278,8 +286,9 @@ export function SectionCardsRight() {
                 <tbody>
                   {ultimas7.map((operacion, index) => (
                     <tr key={index} className="border-b border-gray-700">
-                      <td className="py-1.5 text-white">{operacion.hora || "-"}</td>
+                    <td className="py-1.5 text-white">{operacion.hora || "-"}</td>
                       <td className="text-right text-white">
+
                         {operacion.precio?.toFixed(2) || "-"}
                       </td>
                       <td className="text-right text-white">{operacion.monto || "-"}</td>
@@ -290,7 +299,6 @@ export function SectionCardsRight() {
             </div>
           </CardContent>
         </Card>
-
         <Card className="flex flex-col flex-1 min-w-[240px] h-auto bg-custom-colortwo text-white border-none p-4">
           <CardHeader className="p-0 flex items-center gap-2">
             <BellIcon className="h-4 w-4 text-yellow-400" />
@@ -307,14 +315,14 @@ export function SectionCardsRight() {
                   .map((notificacion, index) => (
                     <div
                       key={index}
-                      className="text-sm border-b border-gray-700 pb-2 flex justify-between items-center group"
+                      className="border-b border-gray-700 hover:bg-gray-700/50 transition-colors"
                     >
                       <span className="text-white">{notificacion}</span>
                       <button
                         className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400 transition-opacity"
                         onClick={() => console.log("Eliminar", index)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        {item.cambio}
                       </button>
                     </div>
                   ))}
