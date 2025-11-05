@@ -317,12 +317,19 @@ export const WebSocketDataProvider = ({ children }) => {
   const updateData = (id, payload) => {
     if (id === 1000) return;
     setDataById((prev) => ({ ...prev, [id]: payload }));
-    if (id === 1007 && payload?.data?.time) {
-      const t = payload.data.time;
-      const hourKey = `${String(t).substring(0, 2)}:00`;
-      setDataByHour((prev) =>
-        prev[hourKey] ? prev : { ...prev, [hourKey]: payload.data }
-      );
+
+    if (id === 1007 && payload.data?.time) {
+      const time = payload.data.time;
+      const hourKey = time.substring(0, 2) + ":00";
+
+      setDataByHour((prev) => {
+        if (prev[hourKey]) return prev;
+
+        return {
+          ...prev,
+          [hourKey]: payload.data,
+        };
+      });
     }
   };
 

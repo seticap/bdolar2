@@ -9,15 +9,13 @@ const InfoPage = () => {
   const { empresas, indices } = useInfoData();
 
   return (
-    <div className="w-full grid grid-cols-1 lg:grid-cols-6 gap-4 px-4 sm:px-6 bg-backgroundtwo py-4 sm:py-[10%]">
+    <div className="w-full grid grid-cols-6 px-3 py-5 bg-backgroundtwo">
       {/* EMPRESAS */}
-      <div className="lg:col-span-2 px-0 sm:px-4">
-        <Card className="bg-custom-colortwo text-white border-none h-[60vh] sm:h-[80vh] w-full sm:w-[60vh]">
+      {/* <div className="col-span-2 px-0">
+        <Card className="bg-custom-colortwo text-white border-none h-[70vh] w-[60vh]">
           <CardHeader className="bg-black max-h-10 mt-[-24px]">
-            <CardTitle className="flex justify-between text-sm sm:text-xl font-semibold">
-              <span className="truncate">EMPRESAS</span>
-              <span className="truncate">VALOR</span>
-              <span className="truncate">VAR. %</span>
+            <CardTitle className="flex justify-between text-xl font-semibold">
+              <span>BOLSA DE VALORES DE COLOMBIA</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="overflow-y-auto max-h-[calc(100%-40px)] scrollbar-custom">
@@ -47,16 +45,23 @@ const InfoPage = () => {
             ))}
           </CardContent>
         </Card>
-      </div>
+      </div> */}
 
       {/* ÍNDICES */}
-      <div className="lg:col-span-1 px-0 sm:px-4">
-        <Card className="bg-custom-colortwo text-white border-none h-[60vh] sm:h-[80vh] w-full sm:w-[45vh]">
-          <CardHeader className="bg-black flex justify-between items-center h-8 mt-[-24px]">
-            <CardTitle className="text-sm sm:text-xl font-semibold truncate">
+      <div className="col-span-2">
+        <Card className="bg-custom-colortwo text-white border-none h-[46vh] w-full pt-0">
+          <CardHeader className="bg-red-700 flex justify-between items-center h-10">
+            <CardTitle className="text-xl font-semibold">
+              INDICE GENERAL BVC
+            </CardTitle>
+          </CardHeader>
+          <div>
+            <MiniChart />
+          </div>
+          {/* <CardHeader className="bg-black flex justify-between items-center h-8 mt-[-24px]">
+            <CardTitle className="text-xl font-semibold truncate">
               ÍNDICES ACCIONARIOS
             </CardTitle>
-            {/* Logo de Bolsa de Valores */}
             <img
               src="images/bvclogo.png"
               alt="BVC"
@@ -88,17 +93,16 @@ const InfoPage = () => {
                 </span>
               </div>
             ))}
-            {/* Gráfico MiniChart integrado */}
             <div className="mt-4">
               <MiniChart />
             </div>
-          </CardContent>
+          </CardContent> */}
         </Card>
       </div>
 
       {/* NOTICIAS */}
-      <div className="lg:col-span-3 pl-0 lg:pl-[23%]">
-        <Card className="bg-custom-colortwo text-white border-none h-auto min-h-[60vh]">
+      <div className="col-span-4 p-0 pl-2 mr-0 w-full">
+        <Card className="bg-custom-colortwo text-white border-none h-auto min-h-[46vh]">
           <CardHeader className="bg-red-700 flex justify-between items-center mt-[-24px] h-8 sm:h-10">
             <CardTitle className="text-sm sm:text-xl font-semibold">
               NOTICIAS ACTUALES
