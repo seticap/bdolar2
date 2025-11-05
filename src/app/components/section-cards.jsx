@@ -1,3 +1,21 @@
+/**
+ * components/section-cards.jsx
+ *
+ * Secciones laterales de la UI principal:
+ * - StockdioForexWidget: widget (tabla mock en dev / iframe en prod) para Forex.
+ * - SectionCards: panel izquierdo con tarjetas (Precios, Montos, Tabla horaria, Forex).
+ * - SectionCardsRight: panel derecho con gráfico (dinámico), últimas transacciones y notificaciones.
+ *
+ * Tecnologías:
+ * - Next.js (Client Components) y dynamic import (sin SSR) para gráficos.
+ * - Contexto de WebSocket (`useWebSocketData`) para datos en tiempo real.
+ * - TailwindCSS para estilos utilitarios.
+ * - lucide-react para íconos.
+ *
+ * Seguridad:
+ * - El widget de Stockdio (prod) escucha `postMessage` y ejecuta `eval` (según guía del proveedor).
+ *   Esto es riesgoso; ver notas en el README técnico para mitigaciones.
+ */
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,8 +25,9 @@ import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 
 /**
- * Gráfico dinámico (client-only). Se desactiva SSR porque el componente
- * (o sus dependencias) requieren `window`.
+ * Gráfico dinámico (client-only).
+ * - `ssr: false` porque el gráfico (o sus dependencias) requiere `window`/DOM.
+ * - Debe existir `./CakeCount` que exporte el componente por defecto.
  */
 const GraficoInteractivo1 = dynamic(() => import("./CakeCount"), {
   ssr: false,
@@ -16,20 +35,23 @@ const GraficoInteractivo1 = dynamic(() => import("./CakeCount"), {
 
 /**
  * Widget de Forex basado en Stockdio.
- * - En desarrollo: tabla con datos mock para acelerar el trabajo local.
- * - En producción: `iframe` con el tablero de cotizaciones en tiempo real.
+ *
+ * - Desarrollo: muestra una tabla con datos de ejemplo para acelerar iteración local.
+ * - Producción: renderiza un `<iframe>` con la "QuoteBoard" de Stockdio (FOREX en tiempo real).
  *
  * Seguridad:
- *  - Actualmente usa `eval` siguiendo las recomendaciones de Stockdio para manejar
- *    ciertos eventos. Se recomienda reemplazarlo por ejecución controlada y validar
- *    `e.origin` o usar `sandbox` en el iframe.
+ * - Se instala un listener global de `message` y se ejecuta `eval(e.data.method)`.
+ *   Esto sigue el patrón de Stockdio, pero es riesgoso. Se recomienda:
+ *   1) Validar `e.origin` para permitir solo dominios de Stockdio.
+ *   2) Cambiar `eval` por una tabla de funciones permitidas (whitelist).
+ *   3) Considerar `sandbox` en el iframe (ej.: `allow-scripts allow-same-origin`).
+ *   4) Remover el listener en cleanup del efecto.
  */
-
 const StockdioForexWidget = () => {
   const [isProduction, setIsProduction] = useState(false);
 
   useEffect(() => {
-    // Detectar entorno: producción vs local
+    // Detecta entorno producción vs local
     setIsProduction(window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1');
     
      // Listener de eventos de Stockdio (solo en producción)

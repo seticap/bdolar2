@@ -1,3 +1,26 @@
+/**
+ * components/ui/select.jsx (o ruta equivalente)
+ * Autor: Juan Jose Peña Quiñonez — CC: 1000273604
+ *
+ * Wrappers estilados de Radix Select:
+ * - Select (Root)              → controla estado abierto/cerrado y valor.
+ * - SelectTrigger               → botón disparador (muestra valor) con ícono.
+ * - SelectContent               → portal + viewport + scroll + animaciones.
+ * - SelectGroup/Label           → agrupación con rótulo.
+ * - SelectItem                  → opción seleccionable (con indicador ✓).
+ * - SelectSeparator             → separador visual entre opciones.
+ * - SelectScrollUp/DownButton   → botones de scroll del viewport.
+ * - SelectValue                 → valor visible en el Trigger.
+ *
+ * Accesibilidad:
+ * - Radix maneja ARIA, foco, teclado y roles automáticamente.
+ * - Usa <SelectLabel> dentro de grupos para semántica.
+ *
+ * Estilos:
+ * - Tailwind + util `cn` (merge de clases).
+ * - `data-slot="..."` para testeo/estilos dirigidos.
+ * - Animaciones controladas por `data-state`/`data-side`.
+ */
 "use client"
 
 import * as React from "react"
@@ -6,24 +29,44 @@ import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Root del Select (controlado o no controlado).
+ * @param {SelectPrimitive.SelectProps} props - Acepta `value`, `defaultValue`, `onValueChange`, `open`, etc.
+ */
 function Select({
   ...props
 }) {
   return <SelectPrimitive.Root data-slot="select" {...props} />;
 }
-
+/**
+ * Agrupación de items, opcionalmente con <SelectLabel/>.
+ * @param {SelectPrimitive.SelectGroupProps} props
+ */
 function SelectGroup({
   ...props
 }) {
   return <SelectPrimitive.Group data-slot="select-group" {...props} />;
 }
-
+/**
+ * Valor a mostrar en el Trigger. Suele ir dentro de <SelectTrigger>.
+ * @param {SelectPrimitive.SelectValueProps} props
+ */
 function SelectValue({
   ...props
 }) {
   return <SelectPrimitive.Value data-slot="select-value" {...props} />;
 }
 
+/**
+ * Botón disparador del Select (abre/cierra).
+ * Incluye tamaño y caret (ChevronDown).
+ *
+ * @param {Object} props
+ * @param {'default'|'sm'} [props.size='default'] - Alto del trigger (h-9 u h-8).
+ * @param {string} [props.className]
+ * @param {React.ReactNode} [props.children] - Normalmente <SelectValue /> o texto.
+ * @returns {JSX.Element}
+ */
 function SelectTrigger({
   className,
   size = "default",
@@ -46,7 +89,15 @@ function SelectTrigger({
     </SelectPrimitive.Trigger>
   );
 }
-
+/**
+ * Contenedor del menú (portal + overlay interno de Radix).
+ * Soporta `position="popper"` para posicionamiento relativo al trigger.
+ *
+ * @param {Object} props
+ * @param {'item-aligned'|'popper'} [props.position='popper']
+ * @param {string} [props.className]
+ * @param {React.ReactNode} [props.children]
+ */
 function SelectContent({
   className,
   children,
@@ -76,7 +127,10 @@ function SelectContent({
     </SelectPrimitive.Portal>
   );
 }
-
+/**
+ * Etiqueta para un grupo dentro del menú.
+ * @param {SelectPrimitive.SelectLabelProps & { className?: string }} props
+ */
 function SelectLabel({
   className,
   ...props
@@ -88,7 +142,12 @@ function SelectLabel({
       {...props} />
   );
 }
-
+/**
+ * Opción seleccionable dentro del menú.
+ * Incluye indicador ✓ cuando está seleccionada.
+ *
+ * @param {SelectPrimitive.SelectItemProps & { className?: string }} props
+ */
 function SelectItem({
   className,
   children,
@@ -111,7 +170,10 @@ function SelectItem({
     </SelectPrimitive.Item>
   );
 }
-
+/**
+ * Separador visual entre secciones del menú.
+ * @param {SelectPrimitive.SelectSeparatorProps & { className?: string }} props
+ */
 function SelectSeparator({
   className,
   ...props
@@ -123,7 +185,10 @@ function SelectSeparator({
       {...props} />
   );
 }
-
+/**
+ * Botón de scroll hacia arriba (aparece si hay overflow en el viewport).
+ * @param {SelectPrimitive.SelectScrollUpButtonProps & { className?: string }} props
+ */
 function SelectScrollUpButton({
   className,
   ...props
@@ -137,6 +202,10 @@ function SelectScrollUpButton({
     </SelectPrimitive.ScrollUpButton>
   );
 }
+/**
+ * Botón de scroll hacia abajo (aparece si hay overflow en el viewport).
+ * @param {SelectPrimitive.SelectScrollDownButtonProps & { className?: string }} props
+ */
 
 function SelectScrollDownButton({
   className,
