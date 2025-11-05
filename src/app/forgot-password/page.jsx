@@ -1,3 +1,8 @@
+/**
+ * src/app/forgot-password.jsx
+ * -- Juan Jose Peña Quiñonez
+ * -- CC: 1000273604
+ */
 'use client';
 
 import { useState } from 'react';

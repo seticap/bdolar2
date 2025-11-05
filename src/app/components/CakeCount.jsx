@@ -1,7 +1,7 @@
 "use client"; // Ejecion del lado del cliente
 
 /**
- * GraficoInteractivo.jsx
+ * CakeCount.jsx
  * 
  * Gráfico de pastel interactivo que muestra distribución de volumen transado.
  * Diseñado para visualización rápida de proporciones con total integrado.
