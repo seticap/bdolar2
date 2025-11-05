@@ -1,22 +1,25 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BellIcon, Trash2 } from "lucide-react";
 import { useWebSocketData } from "../services/WebSocketDataProvider";
 import dynamic from "next/dynamic";
-import { use } from "react";
+import { useDailySheets } from "../services/useDailySheets";
+import { useIntradaySheets } from "../services/IntradaySheetsProvider";
 
 const GraficoInteractivo1 = dynamic(() => import("./CakeCount"), {
   ssr: false,
 });
 
+const horasFijas = ["09:00", "10:00", "11:00", "12:00"];
+
 export function SectionCards() {
   const { dataById } = useWebSocketData();
-  const { dataByHour } = useWebSocketData();
+  const { dataByHour, guardarSlot } = useIntradaySheets() ?? { dataByHour: {} };
+  const safeDataByHour = dataByHour ?? {};
   const precios = dataById["1006"];
   const montos = dataById["1005"];
 
-  const horasFijas = ["09:00", "10:00", "11:00", "12:00"];
+  const { yesterday } = useDailySheets();
 
   const limpiarNumero = (valor) => {
     if (typeof valor === "string") {
@@ -25,20 +28,30 @@ export function SectionCards() {
     return parseFloat(valor);
   };
 
+  const NF2 = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  const toNum = (v) => {
+    if (v === null || v === undefined || v === "-") return NaN;
+    const n = Number(String(v).replace(/,/g, ""));
+    return Number.isFinite(n) ? n : NaN;
+  };
+
+  const fmt2 = (v) => (Number.isFinite(toNum(v)) ? NF2.format(toNum(v)) : "-");
+
   const getVar = (hoy, ayer) => {
-    const numHoy = limpiarNumero(hoy);
-    const numAyer = limpiarNumero(ayer);
-
-    if (isNaN(numHoy) || isNaN(numAyer) || numAyer === 0) return "-";
-
-    const varp = ((numHoy - numAyer) / numAyer) * 100;
-    return varp.toFixed(2);
+    const a = toNum(hoy),
+      b = toNum(ayer);
+    if (!Number.isFinite(a) || !Number.isFinite(b) || b === 0) return "-";
+    return (((a - b) / b) * 100).toFixed(2);
   };
 
   return (
-    <div className="container max-w-screen-xl flex flex-wrap mx-auto justify-center gap-3 px-2">
+    <div className="container max-w-screen-xl flex flex-wrap justify-center gap-3 ">
       {/* === CARD: PRECIOS === */}
-      <Card className="w-full flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2">
+      <Card className="w-full flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2 ml-2">
         <CardContent className="p-0">
           <div className="font-bold text-white mb-2">PRECIOS</div>
           <div className="w-auto">
@@ -53,37 +66,44 @@ export function SectionCards() {
               </thead>
               <tbody>
                 {[
-                  { label: "CIERRE", hoy: "4,168.03", ayer: "4502.12" },
+                  {
+                    label: "CIERRE",
+                    hoy: precios?.trm,
+                    ayer: yesterday?.cierre || "-",
+                  },
                   {
                     label: "MÁXIMO",
                     hoy: precios?.high,
-                    ayer: "4502.12",
+                    ayer: yesterday?.maximo || "-",
                   },
                   {
                     label: "MÍNIMO",
                     hoy: precios?.low,
-                    ayer: "4810.10",
+                    ayer: yesterday?.minimo || "-",
                   },
                   {
                     label: "APERTURA",
                     hoy: precios?.open,
-                    ayer: "4450.10",
+                    ayer: yesterday?.apertura || "-",
                   },
-                ].map(({ label, hoy, ayer }) => (
-                  <tr key={label} className="border-b border-gray-600">
-                    <td className="py-2">{label}</td>
-                    <td className="text-right">{hoy}</td>
-                    <td className="text-right">{ayer}</td>
-                    <td
-                      className="text-right"
-                      style={{
-                        color: getVar(hoy, ayer) < 0 ? "#FF5252" : "#4CAF50",
-                      }}
-                    >
-                      {getVar(hoy, ayer)}
-                    </td>
-                  </tr>
-                ))}
+                ].map(({ label, hoy, ayer }) => {
+                  const varp = getVar(hoy, ayer);
+                  return (
+                    <tr key={label} className="border-b border-gray-600">
+                      <td className="py-3">{label}</td>
+                      <td className="text-right">{fmt2(hoy)}</td>
+                      <td className="text-right">{fmt2(ayer)}</td>
+                      <td
+                        className="text-right"
+                        style={{
+                          color: Number(varp) < 0 ? "#FF5252" : "#4CAF50",
+                        }}
+                      >
+                        {varp === "-" ? "-" : varp}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -91,11 +111,9 @@ export function SectionCards() {
       </Card>
 
       {/* === CARD: MONTOS USD === */}
-      <Card className="flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2">
+      <Card className="flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2 ml-2">
         <CardContent className="p-0">
-          <div className="font-bold text-white mb-2">
-            MONTOS USD:
-          </div>
+          <div className="font-bold text-white mb-2">MONTOS USD:</div>
           <div>
             <table className="w-full text-sm min-w-[225px]">
               <thead>
@@ -114,8 +132,8 @@ export function SectionCards() {
                   { label: "TRANSACCIONES", hoy: montos?.count || "-" },
                 ].map(({ label, hoy }) => (
                   <tr key={label} className="border-b border-gray-600">
-                    <td className="py-1">{label}</td>
-                    <td className="text-right">{hoy}</td>
+                    <td className="py-3">{label}</td>
+                    <td className="text-center">{hoy}</td>
                   </tr>
                 ))}
               </tbody>
@@ -125,7 +143,7 @@ export function SectionCards() {
       </Card>
 
       {/* === CARD: TABLA HORARIA === */}
-      <Card className="w-full flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2">
+      <Card className="w-full flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2 ml-2">
         <CardContent className="p-0">
           <div>
             <table className="w-full text-sm min-w-[230px] border-separate border-spacing-y-2 sm:border-spacing-y-1">
@@ -144,71 +162,21 @@ export function SectionCards() {
               </thead>
               <tbody>
                 {horasFijas.map((hora) => {
-                  const dato = dataByHour[hora] || {};
+                  const row = dataByHour?.[hora] || {};
                   return (
                     <tr key={hora}>
-                      <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-2">{hora}</td>
-                      <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-2">{dato.avg || "-"}</td>
-                      <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-2">{dato.close || "-"}</td>
+                      <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-2">
+                        {hora}
+                      </td>
+                      <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-2">
+                        {row.avg || "-"}
+                      </td>
+                      <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-2">
+                        {row.close || "-"}
+                      </td>
                     </tr>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* === CARD: MONEDAS === (EN ESPERA DE HACERLO FUNCIONAL) */}
-      <Card className="flex-1 min-w-[280px] sm:min-w-[200px] bg-custom-colortwo text-white border-none p-3 sm:p-2">
-        <CardContent className="p-0 max-h-[190px] sm:max-h-[220px] lg:max-h-[110px] overflow-y-auto scrollbar-custom">
-          <div className="font-bold text-white mb-3 sm:mb-2">MONEDAS</div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[250px]">
-              <thead>
-                <tr className="border-b border-gray-600">
-                  <th className="text-left pb-2 w-1/2">DIVISAS</th>
-                  <th className="text-right pb-2 w-1/4">VALOR</th>
-                  <th className="text-right pb-2 w-1/4">%</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  { moneda: "DÓLAR SPOT", valor: "0,9537", cambio: "-0.1160" },
-                  { moneda: "DÓLAR OBS", valor: "0,9537", cambio: "-0.1160" },
-                  { moneda: "EURO", valor: "5,7042", cambio: "+0.0009" },
-                  { moneda: "PESO COL", valor: "20,2880", cambio: "-0.1160" },
-                  { moneda: "REAL BRL", valor: "152,1680", cambio: "+0.0013" },
-                  { moneda: "PESO ARG", valor: "0,9537", cambio: "+0.0009" },
-                  { moneda: "SOL PERUANO", valor: "5,7042", cambio: "-0.0059" },
-                  { moneda: "PESO MXN", valor: "20,2880", cambio: "+0.0013" },
-                  { moneda: "DÓLAR AUS", valor: "152,1680", cambio: "-0.0059" },
-                  { moneda: "DÓLAR CAD", valor: "5,7042", cambio: "-0.0059" },
-                  {
-                    moneda: "LIBRA ESTERLINA",
-                    valor: "20,2880",
-                    cambio: "-0.0059",
-                  },
-                ].map((item, index) => (
-                  <tr
-                    key={index}
-                    className="border-b border-gray-700 hover:bg-gray-700/50 transition-colors"
-                  >
-                    <td className="w-[55%] py-2">{item.moneda}</td>
-                    <td className="w-[25%] text-right font-mono">
-                      {item.valor}
-                    </td>
-                    <td
-                      className={`w-[20%] text-right font-mono ${
-                        item.cambio.startsWith("+")
-                          ? "text-green-400"
-                          : "text-red-400"
-                      }`}
-                    >
-                      {item.cambio}
-                    </td>
-                  </tr>
-                ))}
               </tbody>
             </table>
           </div>
@@ -231,22 +199,22 @@ export function SectionCardsRight() {
   const ultimas7 = operaciones.slice(-6);
 
   return (
-    <div className="flex flex-wrap justify-center gap-4 px-4 w-full">
-      <div className="flex flex-wrap justify-center gap-4 w-full max-w-[1600px]">
-        <div className="flex-1 min-w-[240px] grow">
+    <div className="flex flex-wrap justify-center w-full">
+      <div className="flex flex-wrap justify-center gap-3 w-full max-w-[1600px]">
+        <div className="flex-1 min-w-[240px] grow mr-2">
           <GraficoInteractivo1 />
         </div>
 
-        <Card className="flex flex-col flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-4">
+        <Card className="flex flex-col flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2 mr-2">
           <CardHeader className="p-0 mb-[-30px]">
             <CardTitle className="text-lg font-semibold">
               Últimas Transacciones
             </CardTitle>
           </CardHeader>
 
-          <CardContent className="p-2">
+          <CardContent className="p-0">
             <div className="overflow-auto scrollbar-custom">
-              <table className="w-full text-xs">
+              <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-600 text-gray-400">
                     <th className="text-left pb-1">HORA</th>
@@ -257,7 +225,7 @@ export function SectionCardsRight() {
                 <tbody>
                   {ultimas7.map((operacion, index) => (
                     <tr key={index} className="border-b border-gray-700">
-                      <td className="py-1.5">{operacion.hora || "-"}</td>
+                      <td className="py-2">{operacion.hora || "-"}</td>
                       <td className="text-right">
                         {operacion.precio?.toFixed(2) || "-"}
                       </td>
@@ -269,38 +237,50 @@ export function SectionCardsRight() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Tarjeta de Notificaciones  (EN ESPERA DE HACERLO FUNCIONAL)*/}
-        <Card className="flex flex-col flex-1 min-w-[240px] h-auto bg-custom-colortwo text-white border-none p-4">
-          <CardHeader className="p-0 flex items-center gap-2">
-            <BellIcon className="h-4 w-4 text-yellow-400" />
-            <CardTitle className="text-lg font-semibold">
-              Últimas Notificaciones
-            </CardTitle>
-          </CardHeader>
-
-          {/* Contenido desplazable para notificaciones */}
-          <CardContent className="p-0 mt-2 max-h-[130px]">
-            <div className="overflow-auto h-full scrollbar-thin scrollbar-thumb-gray-600 scrollbar-custom">
-              <div className="space-y-1 pr-1">
-                {Array(10)
-                  .fill("El dólar llegó a $976,65 el 06/11/2024 a las 12:54 am")
-                  .map((notificacion, index) => (
-                    <div
+        {/* === CARD: MONEDAS === (EN ESPERA DE HACERLO FUNCIONAL) */}
+        <Card className="flex-1 min-w-[280px] bg-custom-colortwo text-white border-none p-2 mr-2">
+          <CardContent className="p-0 overflow-y-auto scrollbar-custom">
+            <div className="font-bold text-white mb-0.9">MONEDAS</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[250px]">
+                <thead>
+                  <tr className="border-b border-gray-600">
+                    <th className="text-left pb-2 w-1/2">DIVISAS</th>
+                    <th className="text-right pb-2 w-1/4">VALOR</th>
+                    <th className="text-right pb-2 w-1/4">%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { moneda: "DÓLAR OBS", valor: "0,9537", cambio: "-0.1160" },
+                    { moneda: "EURO", valor: "5,7042", cambio: "+0.0009" },
+                    { moneda: "PESO COL", valor: "20,2880", cambio: "-0.1160" },
+                    { moneda: "DÓLAR CAD", valor: "5,7042", cambio: "-0.0059" },
+                    {
+                      moneda: "LIBRA ESTERLINA",
+                      valor: "20,2880",
+                      cambio: "-0.0059",
+                    },
+                  ].map((item, index) => (
+                    <tr
                       key={index}
-                      className="text-sm border-b border-gray-700 pb-2 flex justify-between items-center group"
+                      className="border-b border-gray-700 hover:bg-gray-700/50 transition-colors"
                     >
-                      <span>{notificacion}</span>
-                      {/* Botón de eliminar que solo se muestra al pasar el mouse */}
-                      <button
-                        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400 transition-opacity"
-                        onClick={() => console.log("Eliminar", index)}
+                      <td className="w-[55%] py-2">{item.moneda}</td>
+                      <td className="w-[25%] text-right">{item.valor}</td>
+                      <td
+                        className={`w-[20%] text-right font-mono ${
+                          item.cambio.startsWith("+")
+                            ? "text-green-400"
+                            : "text-red-400"
+                        }`}
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+                        {item.cambio}
+                      </td>
+                    </tr>
                   ))}
-              </div>
+                </tbody>
+              </table>
             </div>
           </CardContent>
         </Card>

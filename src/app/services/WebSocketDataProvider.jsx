@@ -94,14 +94,14 @@ export const WebSocketDataProvider = ({ children }) => {
 
     if (id === 1007 && payload.data?.time) {
       const time = payload.data.time;
-      const hourKey = time.substring(0,2) + ":00";
+      const hourKey = time.substring(0, 2) + ":00";
 
       setDataByHour((prev) => {
         if (prev[hourKey]) return prev;
 
         return {
           ...prev,
-          [hourKey]: payload.data
+          [hourKey]: payload.data,
         };
       });
     }

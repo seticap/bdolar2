@@ -2,9 +2,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export function LoginForm({ className, ...props }) {
+  const Router = useRouter();
+
   return (
     <div className="h-180">
       <Card className="overflow-hidden p-0">
@@ -18,8 +21,10 @@ export function LoginForm({ className, ...props }) {
             <div className="text-center text-sm">
               ¿Aún no tienes una cuenta?{" "}
               <a
-                href="#"
-                className="underline hover:text-blue-400 underline-offset-4"
+                className="underline underline-offset-2 hover:underline cursor-pointer"
+                onClick={() => {
+                  Router.push("/register");
+                }}
               >
                 Registrate
               </a>
@@ -40,8 +45,10 @@ export function LoginForm({ className, ...props }) {
                 <div className="flex items-center">
                   <Label htmlFor="password">Contraseña</Label>
                   <a
-                    href="#"
                     className="ml-auto text-sm underline-offset-2 hover:underline"
+                    onClick={() => {
+                      Router.push("/forgot-password");
+                    }}
                   >
                     Olvidaste tu contraseña?
                   </a>

@@ -91,11 +91,7 @@ const DollarChart = () => {
             return `${hours}:${minutes}`; // Devuelve la hora en formato hh:mm
           },
         },
-        width: isMobile
-          ? window.innerWidth - 40 // Ajuste de ancho en dispositivos móviles
-          : isTablet
-          ? window.innerWidth * 0.9 // Ajuste de ancho en tablets
-          : 1100, // Ancho fijo en escritorio
+        width: chartContainerRef.current.clientWidth,
         height: isMobile ? 400 : isTablet ? 500 : 705, // Ajuste de alto según dispositivo
         leftPriceScale: {
           visible: true, // Muestra la escala de precios a la izquierda
@@ -210,11 +206,7 @@ const DollarChart = () => {
         ) {
           // Aplica nuevas dimensiones según el tipo de dispositivo
           chartRef.current.applyOptions({
-            width: isMobile
-              ? window.innerWidth - 40 // Ancho ajustado para móviles
-              : isTablet
-              ? window.innerWidth * 0.9 // Ancho proporcional para tablets
-              : chartContainerRef.current.clientWidth, // Ancho igual al contenedor en escritorio
+            width: chartContainerRef.current.clientWidth, // Ancho igual al contenedor en escritorio
             height: isMobile
               ? 400 // Altura fija para móviles
               : isTablet
