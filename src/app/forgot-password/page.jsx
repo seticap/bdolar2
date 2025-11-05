@@ -1,33 +1,3 @@
-/**
- * src/app/forgot-password.jsx
- * Autor: Juan Jose Peña Quiñonez — CC: 1000273604
- *
- * Página de "Olvidé mi contraseña" para Next.js (App Router).
- *
- * Descripción:
- * - Renderiza un formulario para solicitar el restablecimiento de contraseña.
- * - Valida email en el cliente con una expresión regular básica.
- * - Simula una petición asíncrona y muestra notificaciones con react-toastify.
- * - Redirige a la página de inicio tras el envío (éxito simulado).
- * - UI responsiva con TailwindCSS y layout dividido (logo + formulario).
- *
- * Características:
- * - Client Component: usa hooks de React y `useRouter` de `next/navigation`.
- * - Accesibilidad básica: feedback visual de error, botón deshabilitado en envío.
- * - UX: spinner textual ("Enviando...") durante la simulación.
- *
- * Dependencias:
- * - next/navigation: useRouter (para redirección)
- * - react-toastify: toast + ToastProvider (provee contenedor y estilos)
- * - TailwindCSS (clases utilitarias para el layout y estilo)
- *
- * Ruta:
- * - Con App Router, este archivo define la ruta `/forgot-password`.
- *
- * Notas:
- * - Este componente solo simula el flujo; aquí NO se llama a una API real.
- * - Para producción, reemplaza la simulación por una llamada `fetch` a tu backend.
- */
 "use client";
 
 import { useState } from "react";
@@ -35,44 +5,13 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import ToastProvider from "../components/ToastProvider";
 
-/**
- * Valida el formato del correo electrónico (regex simple).
- * Acepta: algo@dominio.tld (tld de 2+ caracteres).
- * No garantiza que el correo exista o reciba mails.
- *
- * @param {string} value - Correo electrónico a validar.
- * @returns {boolean} true si el formato es válido, false en caso contrario.
- */
-
 export default function ForgotPasswordPage() {
-  /** Estado del campo de correo. */
   const [email, setEmail] = useState("");
-   /** Estado de envío para deshabilitar el botón y mostrar loading. */
   const [submitting, setSubmitting] = useState(false);
-  /** Mensaje de error de validación de email. */
   const [error, setError] = useState("");
-  /** Router de Next.js para redirecciones en cliente. */
   const router = useRouter();
-  /**
- * Página: Forgot Password
- * - Contiene formulario controlado con validación de email.
- * - Muestra toasts de error/éxito y redirige tras el envío.
- *
- * @returns {JSX.Element} Interfaz de recuperación de contraseña.
- */
 
   const validateEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
-
-   /**
-   * Maneja el envío del formulario:
-   * - Evita submit por defecto.
-   * - Valida el email y muestra toast de error si es inválido.
-   * - Simula espera de 1s y muestra toast de éxito (flujo real debe llamar API).
-   * - Redirige a `/` tras 1.5s.
-   *
-   * @param {import('react').FormEvent<HTMLFormElement>} e
-   * @returns {Promise<void>}
-   */
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -86,7 +25,6 @@ export default function ForgotPasswordPage() {
     setError("");
     setSubmitting(true);
 
-    // Simulación de petición (reemplazar por fetch a tu backend)
     await new Promise((res) => setTimeout(res, 1000));
     setSubmitting(false);
 
@@ -98,11 +36,9 @@ export default function ForgotPasswordPage() {
 
   return (
     <main className="min-h-screen bg-[#0d0b1d] flex items-center justify-center p-4 md:p-8">
-      {/* Contenedor de react-toastify para toasts globales */}
       <ToastProvider />
 
       <div className="flex flex-col md:flex-row w-full max-w-3xl bg-[#1f1f1f] rounded-lg shadow-md overflow-hidden">
-        {/* Columna: Logo */}
         <div className="w-full md:w-1/2 bg-[#1f1f1f] flex items-center justify-center p-4 md:p-6">
           <img
             src="/logoSet.png"
@@ -111,7 +47,6 @@ export default function ForgotPasswordPage() {
           />
         </div>
 
-        {/* Columna: Formulario */}
         <div className="w-full md:w-1/2 bg-[#1f1f1f] p-4 md:p-6 lg:p-8">
           <h2 className="text-white text-lg md:text-xl font-bold mb-2 text-center md:text-left">
             ¿Olvidaste tu contraseña?

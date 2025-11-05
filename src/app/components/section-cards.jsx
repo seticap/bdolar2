@@ -1,21 +1,3 @@
-/**
- * components/section-cards.jsx
- *
- * Secciones laterales de la UI principal:
- * - StockdioForexWidget: widget (tabla mock en dev / iframe en prod) para Forex.
- * - SectionCards: panel izquierdo con tarjetas (Precios, Montos, Tabla horaria, Forex).
- * - SectionCardsRight: panel derecho con gráfico (dinámico), últimas transacciones y notificaciones.
- *
- * Tecnologías:
- * - Next.js (Client Components) y dynamic import (sin SSR) para gráficos.
- * - Contexto de WebSocket (`useWebSocketData`) para datos en tiempo real.
- * - TailwindCSS para estilos utilitarios.
- * - lucide-react para íconos.
- *
- * Seguridad:
- * - El widget de Stockdio (prod) escucha `postMessage` y ejecuta `eval` (según guía del proveedor).
- *   Esto es riesgoso; ver notas en el README técnico para mitigaciones.
- */
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,37 +6,17 @@ import { useWebSocketData } from "../services/WebSocketDataProvider";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 
-/**
- * Gráfico dinámico (client-only).
- * - `ssr: false` porque el gráfico (o sus dependencias) requiere `window`/DOM.
- * - Debe existir `./CakeCount` que exporte el componente por defecto.
- */
 const GraficoInteractivo1 = dynamic(() => import("./CakeCount"), {
   ssr: false,
 });
 
-/**
- * Widget de Forex basado en Stockdio.
- *
- * - Desarrollo: muestra una tabla con datos de ejemplo para acelerar iteración local.
- * - Producción: renderiza un `<iframe>` con la "QuoteBoard" de Stockdio (FOREX en tiempo real).
- *
- * Seguridad:
- * - Se instala un listener global de `message` y se ejecuta `eval(e.data.method)`.
- *   Esto sigue el patrón de Stockdio, pero es riesgoso. Se recomienda:
- *   1) Validar `e.origin` para permitir solo dominios de Stockdio.
- *   2) Cambiar `eval` por una tabla de funciones permitidas (whitelist).
- *   3) Considerar `sandbox` en el iframe (ej.: `allow-scripts allow-same-origin`).
- *   4) Remover el listener en cleanup del efecto.
- */
+
 const StockdioForexWidget = () => {
   const [isProduction, setIsProduction] = useState(false);
 
   useEffect(() => {
-    // Detecta entorno producción vs local
     setIsProduction(window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1');
     
-     // Listener de eventos de Stockdio (solo en producción)
     if (isProduction && typeof window !== 'undefined' && typeof window.stockdio_events === "undefined") {
       window.stockdio_events = true;
       const stockdio_eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
@@ -64,8 +26,6 @@ const StockdioForexWidget = () => {
       stockdio_eventer(stockdio_messageEvent, function (e) {
         if (typeof(e.data) != "undefined" && typeof(e.data.method) != "undefined") {
           try {
-            // Riesgoso: idealmente reemplazar por una tabla de métodos permitidos.
-            // eslint-disable-next-line no-eval
             eval(e.data.method);
           } catch (error) {
             console.error('Error ejecutando método Stockdio:', error);
@@ -75,7 +35,6 @@ const StockdioForexWidget = () => {
     }
   }, [isProduction]);
 
-  // Datos de ejemplo para desarrollo
   const forexData = [
     { symbol: "EUR/USD", price: "1.0832", change: "+0.12%", value: "+0.0013" },
     { symbol: "GBP/USD", price: "1.2645", change: "-0.08%", value: "-0.0010" },
@@ -94,8 +53,6 @@ const StockdioForexWidget = () => {
           scrolling='no' 
           width='100%' 
           height='350'
-          // 🔒 Opcional: sandbox para aislar el contenido del iframe
-          // sandbox="allow-scripts allow-same-origin"
           src='https://api.stockdio.com/visualization/financial/charts/v1/QuoteBoard?app-key=395DFC50D7D9415DA5A662933D57E22F&stockExchange=FOREX&symbols=EUR%2FUSD;GBP%2FUSD;USD%2FJPY;USD%2FCHF;AUD%2FUSD&includeCompany=false&includeChange=false&culture=Spanish-LatinAmerica&palette=Financial-Light&title=Watch%20List&borderColor=444444&backgroundColor=1a1a1a&captionColor=252525&titleColor=ffffff&labelsColor=cccccc&interlacedColor=252525&positiveColor=05ff05&negativeColor=ff0000&headerColor=cccccc&headerBackgroundColor=2d2d2d&onload=st_1c6c27217f7c478ca8d904cd86b5b94d'
           style={{ 
             border: 'none',
@@ -108,7 +65,6 @@ const StockdioForexWidget = () => {
     );
   }
 
-  // Vista de desarrollo con datos de ejemplo
   return (
     <div className="w-full">
       <div className="overflow-x-auto">
@@ -151,21 +107,13 @@ const StockdioForexWidget = () => {
   );
 };
 
-/**
- * Sección izquierda: tarjetas de resumen (Precios, Montos, Resumen, Horario, Forex).
- * Consume datos del contexto WebSocket
- */
 export function SectionCards() {
   const { dataById, dataByHour } = useWebSocketData();
   const precios = dataById["1006"];
   const montos = dataById["1005"];
 
-  //Horas visibles en la tabla horaria
   const horasFijas = ["09:00", "10:00", "11:00", "12:00"];
 
-  /**
-   * Normaliza un número que puede venir como string con comas
-   */
   const limpiarNumero = (valor) => {
     if (typeof valor === "string") {
       return parseFloat(valor.replace(/,/g, ""));
@@ -173,10 +121,6 @@ export function SectionCards() {
     return parseFloat(valor);
   };
 
-  /**
-   * Calcula la variación porcentual (hoy vs ayer).
-   * Devuelve "-" si los datos no son válidos.
-   */
   const getVar = (hoy, ayer) => {
     const numHoy = limpiarNumero(hoy);
     const numAyer = limpiarNumero(ayer);
@@ -189,7 +133,6 @@ export function SectionCards() {
 
   return (
     <div className="container max-w-screen-xl flex flex-wrap mx-auto justify-center gap-3 px-2">
-      {/* === CARD: PRECIOS === */}
       <Card className="w-full flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2">
         <CardContent className="p-0">
           <div className="font-bold text-white mb-2">PRECIOS</div>
@@ -227,7 +170,6 @@ export function SectionCards() {
         </CardContent>
       </Card>
 
-      {/* === CARD: MONTOS USD === */}
       <Card className="flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2">
         <CardContent className="p-0">
           <div className="font-bold text-white mb-2">MONTOS USD:</div>
@@ -259,7 +201,6 @@ export function SectionCards() {
         </CardContent>
       </Card>
 
-      {/* === CARD: TABLA HORARIA === */}
       <Card className="w-full flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2">
         <CardContent className="p-0">
           <div>
@@ -288,7 +229,6 @@ export function SectionCards() {
         </CardContent>
       </Card>
 
-      {/* === CARD: MONEDAS === */}
       <Card className="flex-1 min-w-[280px] sm:min-w-[300px] bg-custom-colortwo text-white border-none p-3 sm:p-2">
         <CardContent className="p-0">
           <div className="font-bold text-white mb-3 sm:mb-2">MONEDAS EN TIEMPO REAL</div>
@@ -299,14 +239,9 @@ export function SectionCards() {
   );
 }
 
-/**
- * Sección derecha: gráfico, últimas transacciones y ultimas notificaciones.
- * Obtiene las operaciones del canal "1000".
- */
 export function SectionCardsRight() {
   const { dataById } = useWebSocketData();
   const datos = dataById["1000"];
-  /** Normaliza la estructura (hora, precio, monto) desde 3 arrays correlacionados*/
   const operaciones =
     datos?.labels?.map((hora, index) => ({
       hora,
@@ -314,7 +249,6 @@ export function SectionCardsRight() {
       monto: datos.amounts[index],
     })) || [];
   
-  /** Últimas 6 operaciones para la tabla*/
   const ultimas7 = operaciones.slice(-6);
 
   return (

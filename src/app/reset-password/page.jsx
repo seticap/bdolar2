@@ -1,26 +1,3 @@
-/**
- * ResetPasswordPage.jsx
- *
- *  Pagina para restablecer contraseña.
- *  Permite ingresar una nueva contraseña y su confirmacion, valida que coincidan
- *  y simula el envio al backend antes de redirigir al inicio de sesion.
- *
- *  Caracteristiscas:
- *   - Validacion basica: Las contraseñas deben coincidir.
- *   - Estados de UI: `submitting` bloquea el boton y cambia el texto mientras "procesa".
- *   - UX: muestra mensaje de error en caso de no coincidencia.
- *   - Simulacion de backend con `setTimeout` (1s) y Luego redirreccion.
- *
- *  Tecnologias:
- *   - React (useState)
- *   - Next.js App Router (useRouter)
- *   - Tailwind Css para estilos
- *
- *  Notas:
- *   - Reemplazar la simulacion por una llamada real a API cuando este disponible.
- *   - Considerar politicas de contraseñas (minimo de caracteres, complejidad, etc)
- */
-
 "use client";
 
 import { useState } from "react";
@@ -41,7 +18,6 @@ export default function ResetPasswordPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // --- Utilidades de validación/fortaleza ---
   const isStrongPass = (v) =>
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$/.test(v);
 
@@ -118,7 +94,6 @@ export default function ResetPasswordPage() {
     <main className="min-h-screen bg-[#0d0b1d] flex items-center justify-center p-4 md:p-8">
       <ToastProvider />
       <div className="flex flex-col md:flex-row w-full max-w-3xl bg-[#1f1f1f] rounded-lg shadow-md overflow-hidden">
-        {/* Columna Izquierda: Logo */}
         <div className="w-full md:w-1/2 bg-[#1f1f1f] flex items-center justify-center p-4 md:p-6">
           <img
             src="/logoSet.png"
@@ -127,7 +102,6 @@ export default function ResetPasswordPage() {
           />
         </div>
 
-        {/* Columna derecha: Formulario */}
         <div className="w-full md:w-1/2 p-4 md:p-6 lg:p-8">
           <h2 className="text-white text-lg md:text-xl font-bold mb-2 text-center md:text-left">
             Recupera tu contraseña
@@ -137,7 +111,6 @@ export default function ResetPasswordPage() {
           </p>
 
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
-            {/* Nueva contraseña */}
             <div>
               <label className="sr-only">Nueva contraseña</label>
               <div className="relative">
@@ -170,7 +143,6 @@ export default function ResetPasswordPage() {
                 </button>
               </div>
 
-              {/* Medidor de fortaleza */}
               {password &&
                 (() => {
                   const { label, color, percent } = passwordStrength(password);
@@ -194,7 +166,6 @@ export default function ResetPasswordPage() {
                 })()}
             </div>
 
-            {/* Confirmación */}
             <div>
               <label className="sr-only">Repite contraseña</label>
               <div className="relative">
@@ -229,7 +200,6 @@ export default function ResetPasswordPage() {
               {error && <p className="text-red-400 text-sm mt-1">{error}</p>}
             </div>
 
-            {/* Botón */}
             <button
               type="submit"
               disabled={submitting}
@@ -239,7 +209,6 @@ export default function ResetPasswordPage() {
             </button>
           </form>
 
-          {/* Enlace de retorno */}
           <div className="mt-4 text-center">
             <a
               href="/"

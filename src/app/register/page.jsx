@@ -1,41 +1,11 @@
-/**
- * src/app/register.jsx
- * Autor: Juan Jose Peña Quiñonez — CC: 1000273604
- *
- * Página de registro de usuarios (Client Component, Next.js App Router).
- *
- * Descripción:
- * - Formularios controlados para capturar datos personales, de contacto y preferencias.
- * - Validación de campos (sincrónica) + mensajes de error por campo.
- * - Evaluación de fortaleza de contraseña con barra de progreso.
- * - Envío de datos en formato esperado por API externa (toApiPayload).
- * - Toasts de éxito/error (react-toastify) y redirección tras registro.
- * - UI responsiva con TailwindCSS; selector de países/ciudades dependientes.
- *
- * Dependencias:
- * - next/navigation → useRouter (redirigir)
- * - @heroicons/react → EyeIcon/EyeSlashIcon (toggle password)
- * - react-toastify → toast + ToastProvider
- * - TailwindCSS (estilos utilitarios)
- *
- * Ruta:
- * - Con App Router, este archivo define la ruta `/register`.
- *
- * Notas importantes:
- * - `API_TO_FORM` se usa para mapear errores de campos desde la API a nombres internos del formulario,
- *   pero **no está definido** en este archivo. Decláralo/impórtalo para ver errores campo a campo.
- *   Ejemplo rápido:
- *     const API_TO_FORM = { FirstName: 'firstName', LastName: 'lastName', ... };
- */
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { toast } from "react-toastify";
-import ToastProvider from "../components/ToastProvider"; // ✅ asegúrate que la ruta sea correcta
+import ToastProvider from "../components/ToastProvider"; 
 
-/** Lista de países ordenada alfabéticamente (ES). Se utiliza para el selector de país. */
 const COUNTRIES = [
   "Argentina",
   "Alemania",
@@ -69,12 +39,8 @@ const COUNTRIES = [
   "Otro",
 ].sort((a, b) => a.localeCompare(b, "es-ES", { sensitivity: "base" }));
 
-/**
- * Mapa de ciudades por país para el selector dependiente.
- * - Si el país no existe en el mapa, se muestra un input libre para ciudad.
- */
+
 const CITIES_BY_COUNTRY = {
-   /* ... (mantenido igual que en el código original) ... */
   Argentina: [
     "Buenos Aires",
     "Córdoba",
@@ -342,11 +308,7 @@ const CITIES_BY_COUNTRY = {
   ],
   Otro: ["Otra ciudad"],
 };
-/**
- * Transforma el estado del formulario al payload esperado por la API.
- * @param {Record<string, any>} form - Estado del formulario.
- * @returns {Record<string, any>} Payload con claves de API.
- */
+
 function toApiPayload(form) {
   return {
     UserName: (form.email || "").trim(),
@@ -369,17 +331,10 @@ function toApiPayload(form) {
     TermsSecurity: !!form.aceptaDatosSecurities,
   };
 }
-/**
- * Página de registro: formulario controlado con validación y envío a API externa.
- * - Evalúa fortaleza de contraseña.
- * - Enforce de requisitos y aceptación de políticas.
- * - Manejo de errores de API y toasts de feedback.
- * @returns {JSX.Element}
- */
+
 export default function RegisterPage() {
   const router = useRouter();
 
-  /** Estado del formulario (inputs controlados). */
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -400,26 +355,17 @@ export default function RegisterPage() {
     aceptaDatosSecurities: false,
   });
 
-  /** Mapa de errores por campo (string si hay error). */
+ 
   const [errors, setErrors] = useState({});
-  /** Estado de envío (deshabilita botón y evita doble submit). */
   const [submitting, setSubmitting] = useState(false);
-
-  /** Estado para toasts locales (visibilidad/tipo/mensaje). */
   const [toast, setToast] = useState({
     show: false,
     type: "success",
     message: "",
   });
-  /** Toggles de visibilidad de contraseña/confirmación. */
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
- /**
-   * Calcula la fortaleza de una contraseña.
-   * @param {string} [pw=""]
-   * @returns {{score:number,label:string,color:string,percent:number}}
-   */
   function passwordStrength(pw = "") {
     const length = pw.length >= 8;
     const lower = /[a-z]/.test(pw);
@@ -451,13 +397,7 @@ export default function RegisterPage() {
     const percent = (score / 4) * 100;
     return { score, label, color, percent };
   }
-  /**
-   * Muestra un toast temporal (estado local, no react-toastify).
-   * Guarda el timeout en una propiedad estática para limpiarlo entre invocaciones.
-   * @param {"success"|"error"|"info"|"warning"} type
-   * @param {string} message
-   * @param {number} [duration=3500]
-   */
+
   const showToast = (type, message, duration = 3500) => {
     setToast({ show: true, type, message });
     clearTimeout(showToast._t);
@@ -467,29 +407,15 @@ export default function RegisterPage() {
     );
   };
 
-  //------------- Helpers de formato/validación -----------------
-
-  /** Normaliza nombres: solo letras (incluye acentos), espacios, apóstrofe y guion. */
   const sanitizeName = (v) => v.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñÜü' -]/g, "");
-  /** Mantiene solo dígitos (para doc/teléfono). */
   const digitsOnly = (v) => v.replace(/\D/g, "");
-  /** Valida formato básico de email. */
   const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(v);
-  /** Contraseña fuerte: 12+, minúscula, mayúscula, número y símbolo. */
   const isStrongPass = (v) =>
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{12,}$/.test(v);
 
-  /** Setea (o limpia) el error de un campo. */
   const setFieldError = (name, message) =>
     setErrors((prev) => ({ ...prev, [name]: message || undefined }));
 
-  /**
-   * Valida un campo específico.
-   * @param {string} name - Nombre del campo en `form`.
-   * @param {string} value - Valor actual.
-   * @param {Record<string, any>} [current=form] - Estado completo para validaciones cruzadas.
-   * @returns {string} Mensaje de error o "" si es válido.
-   */
   const validateField = (name, value, current = form) => {
     switch (name) {
       case "firstName":
@@ -544,11 +470,6 @@ export default function RegisterPage() {
     }
   };
 
-  /**
-   * Valida todo el formulario y devuelve `true` si es válido.
-   * También actualiza `errors` con los mensajes por campo.
-   * @returns {boolean}
-   */
   const validateAll = () => {
     const fields = [
       "firstName",
@@ -576,15 +497,9 @@ export default function RegisterPage() {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-/**
-   * Maneja cambios de inputs: normaliza, actualiza estado y revalida el campo.
-   * - Exclusividad entre `interesDolar` y `interesAnalisis`.
-   * - Reset de ciudad si cambia país.
-   */
+
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
-
-    // Exclusividad entre intereses
 
     if (name === "interesDolar" || name === "interesAnalisis") {
       const updated = {
@@ -615,9 +530,7 @@ export default function RegisterPage() {
     setForm(updated);
     setFieldError(name, validateField(name, nextValue, updated));
   };
-/**
-   * Valida al perder foco. Maneja caso especial de intereses (checkboxes).
-   */
+
   const onBlur = (e) => {
     const { name, value } = e.target;
     if (name === "interesDolar" || name === "interesAnalisis") {
@@ -631,15 +544,7 @@ export default function RegisterPage() {
     }
     setFieldError(name, validateField(name, value));
   };
-    /**
-   * Envía el formulario:
-   * - Valida todo, verifica aceptación de políticas.
-   * - POST JSON a la API de registro. Intenta mapear errores por campo si la API los retorna.
-   * - Toast de éxito y redirección a `/` si todo sale bien.
-   *
-   * @param {import('react').FormEvent<HTMLFormElement>} e
-   * @returns {Promise<void>}
-   */
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -672,16 +577,14 @@ export default function RegisterPage() {
         body: JSON.stringify(payload),
       });
 
-      const raw = await res.text();  { /* respuesta no-JSON */ }
+      const raw = await res.text();  
       let data = {};
       try {
         data = raw ? JSON.parse(raw) : {};
       } catch {
-        /* no JSON, está bien */
       }
 
       if (!res.ok) {
-        // intenta extraer errores de validación típicos
         const candidate =
           data?.errors ||
           data?.validationErrors ||
@@ -692,7 +595,6 @@ export default function RegisterPage() {
         if (candidate && typeof candidate === "object") {
           const newErrors = {};
           for (const [apiField, msgs] of Object.entries(candidate)) {
-            // Requiere que definas API_TO_FORM en tu app:
             const formField = API_TO_FORM[apiField] || apiField;
             newErrors[formField] = Array.isArray(msgs)
               ? msgs.join(" ")
@@ -705,7 +607,6 @@ export default function RegisterPage() {
           );
         }
 
-        // si no hay estructura de campos, muestra el mensaje plano
         throw new Error(
           data?.message || raw || "No se pudo completar el registro."
         );
@@ -721,20 +622,16 @@ export default function RegisterPage() {
       console.log(toApiPayload(form));
     }
   };
-  /** Lista de ciudades para el país seleccionado (o null si input libre). */
   const citiesForCountry = CITIES_BY_COUNTRY[form.country] || null;
 
-   /** Clase base para inputs (utilidad Tailwind). */
   const inputBase =
     "w-full h-8 px-2.5 rounded-sm bg-[#1f1f1f] text-white text-[13px] placeholder-gray-500 border border-gray-600 focus:outline-none focus:ring-0 focus:border-gray-400";
 
   return (
     <main className="min-h-screen w-full bg-[#0d0b1d] flex items-center justify-center px-3 sm:px-6 py-6">
-      {/* Proveedor de toasts globales */}
       <ToastProvider />
       <section className="w-full max-w-4xl lg:max-w-5xl bg-[#1f1f1f] border border-gray-700 rounded-md shadow-sm overflow-hidden max-h-[90vh]">
         <div className="grid grid-cols-1 lg:grid-cols-5">
-          {/* Columna: Logo/branding */}
           <div className="lg:col-span-2 flex items-center justify-center p-5 lg:p-6 bg-[#1f1f1f] border-b border-gray-700 lg:border-b-0 lg:border-r">
             <a href="/">
               <img
@@ -745,7 +642,6 @@ export default function RegisterPage() {
             </a>
           </div>
 
-          {/* Columna: Formulario */}
           <div className="lg:col-span-3 p-4 sm:p-5 flex flex-col max-h-[88vh]">
             <h2 className="text-white text-2xl font-bold mb-1 text-center">
               Registrate y solicita una Demo
@@ -759,14 +655,7 @@ export default function RegisterPage() {
               noValidate
               className="relative flex-1 flex flex-col min-h-0"
             >
-              {/* CONTENIDO: campos y validaciones (igual que el original) */}
-              {/* ... (contenido del formulario exactamente como en tu código) ... */}
-
-              {/* Nota: El contenido del formulario permanece igual al original, 
-                  se omite aquí por brevedad, pero no se modifica ninguna lógica. */}
-
               <div className="flex-1 overflow-y-auto pr-1 sm:pr-2 space-y-2">
-                {/* Nombres */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <div>
                     <label className="text-gray-300 text-base block mb-1">
@@ -818,7 +707,6 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                {/* Tipo doc / Número */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <div>
                     <label className="text-gray-300 text-base block mb-1">
@@ -876,7 +764,6 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                {/* País / Ciudad */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="text-gray-300 text-base block mb-1">
@@ -1009,8 +896,6 @@ export default function RegisterPage() {
                     )}
                   </div>
                 </div>
-
-                {/* Email / Teléfono */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="text-gray-300 text-base block mb-1">
@@ -1062,8 +947,6 @@ export default function RegisterPage() {
                     )}
                   </div>
                 </div>
-
-                {/* Password / Confirm */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="text-gray-300 text-base block mb-1">
@@ -1168,8 +1051,6 @@ export default function RegisterPage() {
                     )}
                   </div>
                 </div>
-
-                {/* Intereses */}
                 <p className="text-gray-300 text-base">
                   Indique los servicios que necesitas:
                 </p>
@@ -1200,8 +1081,6 @@ export default function RegisterPage() {
                 {errors.interes && (
                   <p className="text-xs text-red-400">{errors.interes}</p>
                 )}
-
-                {/* Términos */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
                   <label className="flex items-start gap-2 text-gray-300 text-sm leading-tight">
                     <input
@@ -1265,8 +1144,6 @@ export default function RegisterPage() {
               </div>
 
               <br />
-
-              {/* FOOTER STICKY */}
               <div className="-mx-5 sm:-mx-6 sticky bottom-0 bg-[#1f1f1f] border-t border-gray-700 px-5 sm:px-6 pt-1.5 pb-1.5">
                 <button className="w-full bg-[#1f4e85] text-white py-1.5 text-base rounded-sm hover:bg-[#173861] transition-colors disabled:opacity-60">
                   {submitting ? "Registrando..." : "Registrarse"}
