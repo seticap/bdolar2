@@ -1,3 +1,42 @@
+/**
+ * components/FooterPage.jsx (o ruta equivalente)
+
+ * Componente de pie de página (footer) para el sitio SET-ICAP.
+ *
+ * Descripción:
+ * - Presenta branding (logo SET ICAP) y logos de aliados/reguladores.
+ * - Incluye secciones informativas: Políticas, Mapa del sitio y Contacto.
+ * - Cierra con línea divisoria y aviso de derechos reservados.
+ *
+ * Diseño/UX:
+ * - Tema oscuro con alto contraste.
+ * - Layout responsive con TailwindCSS:
+ *    - Zona superior: fila de logos (columna en mobile, fila en desktop).
+ *    - Zona inferior: grid de 3 columnas a partir de `md`.
+ * - Tipografías escaladas por breakpoint (`text-xs`, `text-sm`, `text-lg`).
+ *
+ * Dependencias:
+ * - TailwindCSS para utilidades de estilo.
+ * - Imágenes estáticas (se recomienda ubicarlas en `/public`).
+ *
+ * Recomendaciones de ruta de imágenes:
+ * - En Next.js, si los assets están en `/public`, refiérete a ellos con `/...` (absoluto desde raíz pública),
+ *   por ejemplo: `/logoSet.png`, `/images/sfclogo.png`, etc.
+ * - En este archivo se usan rutas relativas (`../logoSet.png`), ajústalas si mueves el componente de carpeta.
+ *
+ * Accesibilidad:
+ * - Incluye `alt` descriptivo en todas las imágenes.
+ * - Listas semánticas para enlaces/ítems informativos.
+ * - Considera convertir cada item de “Políticas” y “Mapa del sitio” en <a> con `href` reales cuando existan URLs.
+ *
+ * SEO/Semántica:
+ * - Envoltura semántica `<footer>`.
+ * - Titulares por sección con `<h3>` para jerarquía clara.
+ *
+ * Limitaciones/Notas:
+ * - Este footer no recibe props. Si necesitas parametrizar logos o URLs, considera aceptar props o usar un objeto de configuración.
+ */
+
 const FooterPage = () => {
   return (
     <footer className="bg-custom-colortwo p-4 text-white text-center text-xs sm:text-sm">
