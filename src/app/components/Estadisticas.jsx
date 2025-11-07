@@ -1,7 +1,7 @@
 /**
  * Estadisticas.jsx
  * -- Juan Jose Peña Quiñonez
- * -- CC:1000273604
+ * -- Cc:1000273604
  *  Componente de alto nivel para listar estadísticas de mercado
  *  segmentadas por **IMCs** y **CLIENTES**, con filtros persistentes.
  * 

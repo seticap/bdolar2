@@ -3,6 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWebSocketData } from "../services/WebSocketDataProvider";
 import dynamic from "next/dynamic";
+import { useDailySheets } from "../services/useDailySheets";
+import { useIntradaySheets } from "../services/IntradaySheetsProvider";
 import { useEffect, useState } from "react";
 
 const GraficoInteractivo1 = dynamic(() => import("./CakeCount"), {
@@ -13,49 +15,67 @@ const StockdioForexWidget = () => {
   const [isProduction, setIsProduction] = useState(false);
 
   useEffect(() => {
-    setIsProduction(window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1');
-    
-    if (isProduction && typeof window !== 'undefined' && typeof window.stockdio_events === "undefined") {
-      window.stockdio_events = true;
-      const stockdio_eventMethod = window.addEventListener ? "addEventListener" : "attachEvent";
-      const stockdio_eventer = window[stockdio_eventMethod];
-      const stockdio_messageEvent = stockdio_eventMethod == "attachEvent" ? "onmessage" : "message";
-      
-      stockdio_eventer(stockdio_messageEvent, function (e) {
-        if (typeof(e.data) != "undefined" && typeof(e.data.method) != "undefined") {
-          try {
-            eval(e.data.method);
-          } catch (error) {
-            console.error('Error ejecutando método Stockdio:', error);
-          }
-        }
-      }, false);
-    }
-  }, [isProduction]);
+    const isProd =
+      window.location.hostname !== "localhost" &&
+      window.location.hostname !== "127.0.0.1";
+    setIsProduction(isProd);
 
-  const forexData = [
-    { symbol: "EUR/USD", price: "1.0832", change: "+0.12%", value: "+0.0013" },
-    { symbol: "GBP/USD", price: "1.2645", change: "-0.08%", value: "-0.0010" },
-    { symbol: "USD/JPY", price: "149.32", change: "+0.25%", value: "+0.3730" },
-    { symbol: "USD/CHF", price: "0.8834", change: "+0.15%", value: "+0.0013" },
-    { symbol: "AUD/USD", price: "0.6521", change: "-0.05%", value: "-0.0003" },
-    { symbol: "USD/CAD", price: "1.3589", change: "+0.18%", value: "+0.0024" },
+    if (
+      isProd &&
+      typeof window !== "undefined" &&
+      typeof window.stockdio_events === "undefined"
+    ) {
+      window.stockdio_events = true;
+      const stockdio_eventMethod = window.addEventListener
+        ? "addEventListener"
+        : "attachEvent";
+      const stockdio_eventer = window[stockdio_eventMethod];
+      const stockdio_messageEvent =
+        stockdio_eventMethod === "attachEvent" ? "onmessage" : "message";
+
+      stockdio_eventer(
+        stockdio_messageEvent,
+        function (e) {
+          if (
+            typeof e.data !== "undefined" &&
+            typeof e.data.method !== "undefined"
+          ) {
+            try {
+              eval(e.data.method);
+            } catch (error) {
+              console.error("Error ejecutando método Stockdio:", error);
+            }
+          }
+        },
+        false
+      );
+    }
+  }, []);
+
+  // Datos de ejemplo para desarrollo - basados en la imagen N°1
+  const monedasData = [
+    { symbol: "DÓLAR OBS", price: "0.9537", change: "-0.1160%" },
+    { symbol: "EURO", price: "5.7042", change: "+0.0009%" },
+    { symbol: "PESO COL", price: "20.2880", change: "-0.1160%" },
+    { symbol: "DÓLAR CAD", price: "5.7042", change: "-0.0059%" },
+    { symbol: "LIBRA ESTERLINA", price: "20.2880", change: "-0.0059%" },
   ];
 
+  // Solo renderiza iframe si es producción
   if (isProduction) {
     return (
       <div className="w-full h-full">
-        <iframe 
-          id='st_1c6c27217f7c478ca8d904cd86b5b94d'
-          frameBorder='0' 
-          scrolling='no' 
-          width='100%' 
-          height='350'
-          src='https://api.stockdio.com/visualization/financial/charts/v1/QuoteBoard?app-key=395DFC50D7D9415DA5A662933D57E22F&stockExchange=FOREX&symbols=EUR%2FUSD;GBP%2FUSD;USD%2FJPY;USD%2FCHF;AUD%2FUSD&includeCompany=false&includeChange=false&culture=Spanish-LatinAmerica&palette=Financial-Light&title=Watch%20List&borderColor=444444&backgroundColor=1a1a1a&captionColor=252525&titleColor=ffffff&labelsColor=cccccc&interlacedColor=252525&positiveColor=05ff05&negativeColor=ff0000&headerColor=cccccc&headerBackgroundColor=2d2d2d&onload=st_1c6c27217f7c478ca8d904cd86b5b94d'
-          style={{ 
-            border: 'none',
-            minHeight: '350px',
-            borderRadius: '8px'
+        <iframe
+          id="st_1c6c27217f7c478ca8d904cd86b5b94d"
+          frameBorder="0"
+          scrolling="no"
+          width="100%"
+          height="350"
+          src="https://api.stockdio.com/visualization/financial/charts/v1/QuoteBoard?app-key=395DFC50D7D9415DA5A662933D57E22F&stockExchange=FOREX&symbols=EUR%2FUSD;GBP%2FUSD;USD%2FJPY;USD%2FCHF;AUD%2FUSD&includeCompany=false&includeChange=false&culture=Spanish-LatinAmerica&palette=Financial-Light&title=Watch%20List&borderColor=444444&backgroundColor=1a1a1a&captionColor=252525&titleColor=ffffff&labelsColor=cccccc&interlacedColor=252525&positiveColor=05ff05&negativeColor=ff0000&headerColor=cccccc&headerBackgroundColor=2d2d2d&onload=st_1c6c27217f7c478ca8d904cd86b5b94d"
+          style={{
+            border: "none",
+            minHeight: "350px",
+            borderRadius: "8px",
           }}
           title="Cotizaciones de Forex en Tiempo Real"
         />
@@ -63,6 +83,7 @@ const StockdioForexWidget = () => {
     );
   }
 
+  // En desarrollo, mostrar tabla simulada con datos de la imagen N°1
   return (
     <div className="w-full">
       <div className="overflow-x-auto">
@@ -70,27 +91,27 @@ const StockdioForexWidget = () => {
           <thead>
             <tr className="border-b border-gray-600">
               <th className="text-left pb-2 w-2/5 text-gray-300">DIVISA</th>
-              <th className="text-right pb-2 w-1/5 text-gray-300">PRECIO</th>
-              <th className="text-right pb-2 w-1/5 text-gray-300">CAMBIO</th>
-              <th className="text-right pb-2 w-1/5 text-gray-300">VAR%</th>
+              <th className="text-right pb-2 w-1/5 text-gray-300">VALOR</th>
+              <th className="text-right pb-2 w-1/5 text-gray-300">%</th>
             </tr>
           </thead>
           <tbody>
-            {forexData.map((item, index) => (
-              <tr 
-                key={index} 
+            {monedasData.map((item, index) => (
+              <tr
+                key={index}
                 className="border-b border-gray-700 hover:bg-gray-700/30 transition-colors"
               >
                 <td className="py-2 text-white font-medium">{item.symbol}</td>
-                <td className="text-right font-mono text-white">{item.price}</td>
-                <td className={`text-right font-mono ${
-                  item.value.startsWith('+') ? 'text-green-400' : 'text-red-400'
-                }`}>
-                  {item.value}
+                <td className="text-right font-mono text-white">
+                  {item.price}
                 </td>
-                <td className={`text-right font-mono ${
-                  item.change.startsWith('+') ? 'text-green-400' : 'text-red-400'
-                }`}>
+                <td
+                  className={`text-right font-mono ${
+                    item.change.startsWith("+")
+                      ? "text-green-400"
+                      : "text-red-400"
+                  }`}
+                >
                   {item.change}
                 </td>
               </tr>
@@ -105,8 +126,12 @@ const StockdioForexWidget = () => {
   );
 };
 
+const horasFijas = ["09:00", "10:00", "11:00", "12:00"];
+
 export function SectionCards() {
-  const { dataById, dataByHour } = useWebSocketData();
+  const { dataById } = useWebSocketData();
+  const { dataByHour, guardarSlot } = useIntradaySheets() ?? { dataByHour: {} };
+  const safeDataByHour = dataByHour ?? {};
   const precios = dataById["1006"];
   const montos = dataById["1005"];
 
@@ -140,53 +165,77 @@ export function SectionCards() {
   };
 
   return (
-    <div className="container max-w-screen-xl flex flex-wrap mx-auto justify-center gap-3 px-2">
-      <Card className="w-full flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2">
+    <div className="container max-w-screen-xl flex flex-wrap justify-center gap-3 ">
+      {/* === CARD: PRECIOS === */}
+      <Card className="w-full flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2 ml-2">
         <CardContent className="p-0">
           <div className="font-bold text-white mb-2">PRECIOS</div>
           <div className="w-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-600">
-                  <th className="text-left pb-2 w-auto text-gray-300"></th>
-                  <th className="text-right pb-2 w-auto text-gray-300">HOY</th>
-                  <th className="text-right pb-2 w-auto text-gray-300">AYER</th>
-                  <th className="text-right pb-2 w-auto text-gray-300">VAR%</th>
+                  <th className="text-left pb-2 w-auto"></th>
+                  <th className="text-right pb-2 w-auto">HOY</th>
+                  <th className="text-right pb-2 w-auto">AYER</th>
+                  <th className="text-right pb-2 w-auto">VAR%</th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  { label: "CIERRE", hoy: "4,168.03", ayer: "4502.12" },
-                  { label: "MÁXIMO", hoy: precios?.high, ayer: "4502.12" },
-                  { label: "MÍNIMO", hoy: precios?.low, ayer: "4810.10" },
-                  { label: "APERTURA", hoy: precios?.open, ayer: "4450.10" },
-                ].map(({ label, hoy, ayer }) => (
-                  <tr key={label} className="border-b border-gray-600">
-                    <td className="py-2 text-white">{label}</td>
-                    <td className="text-right text-white">{hoy}</td>
-                    <td className="text-right text-white">{ayer}</td>
-                    <td className={`text-right ${
-                      getVar(hoy, ayer) < 0 ? 'text-red-400' : 'text-green-400'
-                    }`}>
-                      {getVar(hoy, ayer)}
-                    </td>
-                  </tr>
-                ))}
+                  {
+                    label: "CIERRE",
+                    hoy: precios?.trm,
+                    ayer: yesterday?.cierre || "-",
+                  },
+                  {
+                    label: "MÁXIMO",
+                    hoy: precios?.high,
+                    ayer: yesterday?.maximo || "-",
+                  },
+                  {
+                    label: "MÍNIMO",
+                    hoy: precios?.low,
+                    ayer: yesterday?.minimo || "-",
+                  },
+                  {
+                    label: "APERTURA",
+                    hoy: precios?.open,
+                    ayer: yesterday?.apertura || "-",
+                  },
+                ].map(({ label, hoy, ayer }) => {
+                  const varp = getVar(hoy, ayer);
+                  return (
+                    <tr key={label} className="border-b border-gray-600">
+                      <td className="py-3">{label}</td>
+                      <td className="text-right">{fmt2(hoy)}</td>
+                      <td className="text-right">{fmt2(ayer)}</td>
+                      <td
+                        className="text-right"
+                        style={{
+                          color: Number(varp) < 0 ? "#FF5252" : "#4CAF50",
+                        }}
+                      >
+                        {varp === "-" ? "-" : varp}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </CardContent>
       </Card>
-      <Card className="flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2">
 
+      {/* === CARD: MONTOS USD === */}
+      <Card className="flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2 ml-2">
         <CardContent className="p-0">
           <div className="font-bold text-white mb-2">MONTOS USD:</div>
           <div>
             <table className="w-full text-sm min-w-[225px]">
               <thead>
                 <tr className="border-b border-gray-600">
-                  <th className="text-left w-auto text-gray-300"></th>
-                  <th className="text-center w-auto text-gray-300">HOY</th>
+                  <th className="text-left w-auto"></th>
+                  <th className="text-center w-auto">HOY</th>
                 </tr>
               </thead>
               <tbody>
@@ -199,8 +248,8 @@ export function SectionCards() {
                   { label: "TRANSACCIONES", hoy: montos?.count || "-" },
                 ].map(({ label, hoy }) => (
                   <tr key={label} className="border-b border-gray-600">
-                    <td className="py-1 text-white">{label}</td>
-                    <td className="text-right text-white">{hoy}</td>
+                    <td className="py-3">{label}</td>
+                    <td className="text-center">{hoy}</td>
                   </tr>
                 ))}
               </tbody>
@@ -208,15 +257,23 @@ export function SectionCards() {
           </div>
         </CardContent>
       </Card>
-      <Card className="w-full flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2">
+
+      {/* === CARD: TABLA HORARIA === */}
+      <Card className="w-full flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2 ml-2">
         <CardContent className="p-0">
           <div>
             <table className="w-full text-sm min-w-[230px] border-separate border-spacing-y-2 sm:border-spacing-y-1">
               <thead>
                 <tr>
-                  <th className="text-center border-gray-600 border-b px-2 py-1 text-gray-300">HORA</th>
-                  <th className="text-center border-gray-600 border-b px-2 py-1 text-gray-300">PROMEDIO</th>
-                  <th className="text-center border-gray-600 border-b px-2 py-1 text-gray-300">CIERRE</th>
+                  <th className="text-center border-gray-600 border-b px-2 py-1">
+                    HORA
+                  </th>
+                  <th className="text-center border-gray-600 border-b px-2 py-1">
+                    PROMEDIO
+                  </th>
+                  <th className="text-center border-gray-600 border-b px-2 py-1">
+                    CIERRE
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -224,9 +281,15 @@ export function SectionCards() {
                   const row = dataByHour?.[hora] || {};
                   return (
                     <tr key={hora}>
-                      <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-2 text-white">{hora}</td>
-                      <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-2 text-white">{dato.avg || "-"}</td>
-                      <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-2 text-white">{dato.close || "-"}</td>
+                      <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-2">
+                        {hora}
+                      </td>
+                      <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-2">
+                        {row.avg || "-"}
+                      </td>
+                      <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-2">
+                        {row.close || "-"}
+                      </td>
                     </tr>
                   );
                 })}
@@ -235,14 +298,6 @@ export function SectionCards() {
           </div>
         </CardContent>
       </Card>
-
-      <Card className="flex-1 min-w-[280px] sm:min-w-[300px] bg-custom-colortwo text-white border-none p-3 sm:p-2">
-        <CardContent className="p-0">
-          <div className="font-bold text-white mb-3 sm:mb-2">MONEDAS EN TIEMPO REAL</div>
-          <StockdioForexWidget />
-        </CardContent>
-      </Card>
-
     </div>
   );
 }
@@ -256,7 +311,7 @@ export function SectionCardsRight() {
       precio: datos.prices[index],
       monto: datos.amounts[index],
     })) || [];
-  
+
   const ultimas7 = operaciones.slice(-6);
 
   return (
@@ -286,12 +341,11 @@ export function SectionCardsRight() {
                 <tbody>
                   {ultimas7.map((operacion, index) => (
                     <tr key={index} className="border-b border-gray-700">
-                    <td className="py-1.5 text-white">{operacion.hora || "-"}</td>
-                      <td className="text-right text-white">
-
+                      <td className="py-2">{operacion.hora || "-"}</td>
+                      <td className="text-right">
                         {operacion.precio?.toFixed(2) || "-"}
                       </td>
-                      <td className="text-right text-white">{operacion.monto || "-"}</td>
+                      <td className="text-right">{operacion.monto || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -299,35 +353,12 @@ export function SectionCardsRight() {
             </div>
           </CardContent>
         </Card>
-        <Card className="flex flex-col flex-1 min-w-[240px] h-auto bg-custom-colortwo text-white border-none p-4">
-          <CardHeader className="p-0 flex items-center gap-2">
-            <BellIcon className="h-4 w-4 text-yellow-400" />
-            <CardTitle className="text-lg font-semibold">
-              Últimas Notificaciones
-            </CardTitle>
-          </CardHeader>
 
-          <CardContent className="p-0 mt-2 max-h-[130px]">
-            <div className="overflow-auto h-full scrollbar-thin scrollbar-thumb-gray-600 scrollbar-custom">
-              <div className="space-y-1 pr-1">
-                {Array(10)
-                  .fill("El dólar llegó a $976,65 el 06/11/2024 a las 12:54 am")
-                  .map((notificacion, index) => (
-                    <div
-                      key={index}
-                      className="border-b border-gray-700 hover:bg-gray-700/50 transition-colors"
-                    >
-                      <span className="text-white">{notificacion}</span>
-                      <button
-                        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400 transition-opacity"
-                        onClick={() => console.log("Eliminar", index)}
-                      >
-                        {item.cambio}
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            </div>
+        {/* === CARD: MONEDAS EN TIEMPO REAL (CON FUNCIONALIDAD STOCKDIO) === */}
+        <Card className="flex-1 min-w-[280px] bg-custom-colortwo text-white border-none p-2 mr-2">
+          <CardContent className="p-0">
+            <div className="font-bold text-white mb-2">MONEDAS EN TIEMPO REAL</div>
+            <StockdioForexWidget />
           </CardContent>
         </Card>
       </div>

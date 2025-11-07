@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
-import { toast } from "react-toastify";
-import ToastProvider from "../components/ToastProvider"; 
+import Link from "next/link";
 
-
+/** Lista de países ordenada alfabéticamente (ES) */
 const COUNTRIES = [
   "Argentina",
   "Alemania",
@@ -40,7 +39,7 @@ const COUNTRIES = [
   "Otro",
 ].sort((a, b) => a.localeCompare(b, "es-ES", { sensitivity: "base" }));
 
-
+/** Ciudades por país (usadas al seleccionar un país) */
 const CITIES_BY_COUNTRY = {
   Argentina: [
     "Buenos Aires",
@@ -336,7 +335,9 @@ function toApiPayload(form) {
 export default function RegisterPage() {
   const router = useRouter();
 
+  /*Estado del formulario (datos controlados)*/
   const [form, setForm] = useState({
+    username: "",
     firstName: "",
     lastName: "",
     idType: "",
@@ -355,18 +356,25 @@ export default function RegisterPage() {
     aceptaDatosFX: false,
     aceptaDatosSecurities: false,
   });
-
- 
+  /*Mensajes de error por campo*/
   const [errors, setErrors] = useState({});
+  /*Estado de envío*/
   const [submitting, setSubmitting] = useState(false);
+
+  /*Toast flotante (éxito/error)*/
   const [toast, setToast] = useState({
     show: false,
     type: "success",
     message: "",
   });
+  /*Toggle de visibilidad de contraseñas*/
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  /*
+   * Evalúa la fortaleza de una contraseña.
+   * Retorna Label/color/percent para la barra visual
+   */
   function passwordStrength(pw = "") {
     const length = pw.length >= 8;
     const lower = /[a-z]/.test(pw);
@@ -408,16 +416,26 @@ export default function RegisterPage() {
     );
   };
 
-  const sanitizeName = (v) => v.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñÜü' -]/g, "");
-  const digitsOnly = (v) => v.replace(/\D/g, "");
+  //------------- Helpers de formato/validación -----------------
 
+  /**Permite solo letras, acentos, espacios, apóstrofe y guion (para nombres) */
+  const sanitizeName = (v) => v.replace(/[^A-Za-zÁÉÍÓÚáéíóúÑñÜü' -]/g, "");
+  /** Solo dígitos (para documento y telefono) */
+  const digitsOnly = (v) => v.replace(/\D/g, "");
+  /** Email simple */
   const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(v);
+  /** Contraseña robusta: 8+, minúscula, mayúscula, número y simbolo */
   const isStrongPass = (v) =>
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{12,}$/.test(v);
-
+  // solo minúsculas, números, punto, guion y guion_bajo
+  const sanitizeUsername = (v) => v.toLowerCase().replace(/[^a-z0-9._-]/g, "");
+  // debe empezar con letra y tener 4+ caracteres
+  const isUsername = (v) => /^[a-z][a-z0-9._-]{3,}$/.test(v);
+  /** Seteo (o Limpia) el error de un campo */
   const setFieldError = (name, message) =>
     setErrors((prev) => ({ ...prev, [name]: message || undefined }));
 
+  /**Valida un campo y devuelve el mensaje de error (o cadena vacia si esta ok) */
   const validateField = (name, value, current = form) => {
     switch (name) {
       case "firstName":
@@ -479,6 +497,7 @@ export default function RegisterPage() {
   /** Valida todos los campos requeridos y reglas de negocio */
   const validateAll = () => {
     const fields = [
+      "username",
       "firstName",
       "lastName",
       "email",
@@ -497,17 +516,18 @@ export default function RegisterPage() {
       const msg = validateField(f, form[f]);
       if (msg) newErrors[f] = msg;
     });
-
+    // Debe seleccionar al menos un interés
     if (!(form.interesDolar || form.interesAnalisis)) {
       newErrors.interes = "Selecciona una opción de interés.";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
+  /** Maneja cambios; normaliza valores y revalida el campo actualizado */
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
 
+    // Exclusividad entre intereses
     if (name === "interesDolar" || name === "interesAnalisis") {
       const updated = {
         ...form,
@@ -539,6 +559,7 @@ export default function RegisterPage() {
     setFieldError(name, validateField(name, nextValue, updated));
   };
 
+  /**Valida al perder foco */
   const onBlur = (e) => {
     const { name, value } = e.target;
     if (name === "interesDolar" || name === "interesAnalisis") {
@@ -565,7 +586,7 @@ export default function RegisterPage() {
         "policies",
         "Debes aceptar todos los términos y políticas."
       );
-      pushToast("error", "Debes aceptar los términos y políticas.");
+      showToast("error", "Debes aceptar los términos y políticas.");
       return;
     } else {
       setFieldError("policies", "");
@@ -584,14 +605,16 @@ export default function RegisterPage() {
         body: JSON.stringify(payload),
       });
 
-      const raw = await res.text();  
+      const raw = await res.text(); // leemos SIEMPRE como texto primero
       let data = {};
       try {
         data = raw ? JSON.parse(raw) : {};
       } catch {
+        /* no JSON, está bien */
       }
 
       if (!res.ok) {
+        // intenta extraer errores de validación típicos
         const candidate =
           data?.errors ||
           data?.validationErrors ||
@@ -643,7 +666,6 @@ export default function RegisterPage() {
           ),
         900
       );
->>>>>>> f3020e429f3926161c28086de2e745b56292a142
     } catch (err) {
       showToast("error", err.message || "Error inesperado");
     } finally {
@@ -651,8 +673,10 @@ export default function RegisterPage() {
       console.log(toApiPayload(form));
     }
   };
-
+  /** Lista de ciudades del pais actual (si aplica) */
   const citiesForCountry = CITIES_BY_COUNTRY[form.country] || null;
+
+  /**Clases base para inputs compactos */
   const inputBase =
     "w-full h-8 px-2.5 rounded-sm bg-[#1f1f1f] text-white text-[13px] \
 placeholder-gray-500 border border-gray-600 focus:outline-none \
@@ -660,10 +684,10 @@ focus:ring-0 focus:border-gray-400";
 
   return (
     <main className="min-h-screen w-full bg-[#0d0b1d] flex items-center justify-center px-3 sm:px-6 py-6">
-      <ToastProvider />
-
+      {/* Card principal (con scroll interno en el formulario) */}
       <section className="w-full max-w-4xl lg:max-w-5xl bg-[#1f1f1f] border border-gray-700 rounded-md shadow-sm overflow-hidden max-h-[90vh]">
         <div className="grid grid-cols-1 lg:grid-cols-5">
+          {/* columna de lo logo */}
           <div className="lg:col-span-2 flex items-center justify-center p-5 lg:p-6 bg-[#1f1f1f] border-b border-gray-700 lg:border-b-0 lg:border-r">
             <Link href="/">
               <img
@@ -674,11 +698,14 @@ focus:ring-0 focus:border-gray-400";
             </Link>
           </div>
 
+          {/* Formulario: scroll interno si llegase a faltar espacio */}
+          {/* Formulario: contenido scroll + footer sticky */}
+          {/* Formulario: contenido scroll + footer sticky */}
           <div className="lg:col-span-3 p-4 sm:p-5 flex flex-col max-h-[88vh]">
-            <h2 className="text-white text-2xl font-bold mb-1 text-center">
+            <h2 className="text-white text-xl font-bold mb-1 text-center">
               Registrate y solicita una Demo
             </h2>
-            <p className="text-gray-400 text-sm mb-2">
+            <p className="text-gray-400 text-[11px] mb-2">
               ¡Únete a SET-ICAP | FX!. Vamos a configurar tu cuenta.
             </p>
 
@@ -687,10 +714,12 @@ focus:ring-0 focus:border-gray-400";
               noValidate
               className="relative flex-1 flex flex-col min-h-0"
             >
+              {/* CONTENIDO: scrollea si hace falta */}
               <div className="flex-1 overflow-y-auto pr-1 sm:pr-2 space-y-2">
+                {/* ...(todos los campos)*/}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-300 text-base block mb-1">
+                    <label className="text-gray-300 text-sm block mb-1">
                       - Nombre
                     </label>
                     <input
@@ -714,8 +743,7 @@ focus:ring-0 focus:border-gray-400";
                     )}
                   </div>
                   <div>
-                    <label className="text-gray-300 text-base block mb-1">
-
+                    <label className="text-gray-300 text-sm block mb-1">
                       - Apellido
                     </label>
                     <input
@@ -742,8 +770,7 @@ focus:ring-0 focus:border-gray-400";
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-300 text-base block mb-1">
-
+                    <label className="text-gray-300 text-sm block mb-1">
                       - Tipo de Id
                     </label>
                     <select
@@ -774,8 +801,7 @@ focus:ring-0 focus:border-gray-400";
                     )}
                   </div>
                   <div>
-                    <label className="text-gray-300 text-base block mb-1">
-
+                    <label className="text-gray-300 text-sm block mb-1">
                       - Num. Identificación
                     </label>
                     <input
@@ -801,9 +827,10 @@ focus:ring-0 focus:border-gray-400";
                   </div>
                 </div>
 
+                {/* País / Ciudad */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-gray-300 text-base block mb-1">
+                    <label className="text-gray-300 text-sm block mb-1">
                       - País
                     </label>
                     <select
@@ -832,8 +859,7 @@ focus:ring-0 focus:border-gray-400";
                   </div>
 
                   <div>
-                    <label className="text-gray-300 text-base block mb-1">
-
+                    <label className="text-gray-300 text-sm block mb-1">
                       - Ciudad
                     </label>
                     {CITIES_BY_COUNTRY[form.country] ? (
@@ -886,8 +912,7 @@ focus:ring-0 focus:border-gray-400";
                 {/* Tipo persona / Empresa */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-gray-300 text-base block mb-1">
-
+                    <label className="text-gray-300 text-sm block mb-1">
                       - Tipo de Persona
                     </label>
                     <select
@@ -912,8 +937,7 @@ focus:ring-0 focus:border-gray-400";
                     )}
                   </div>
                   <div>
-                    <label className="text-gray-300 text-base block mb-1">
-
+                    <label className="text-gray-300 text-sm block mb-1">
                       - Empresa
                     </label>
                     <input
@@ -936,10 +960,11 @@ focus:ring-0 focus:border-gray-400";
                     )}
                   </div>
                 </div>
+
+                {/* Email / Teléfono */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-gray-300 text-base block mb-1">
-
+                    <label className="text-gray-300 text-sm block mb-1">
                       - Email
                     </label>
                     <input
@@ -963,8 +988,7 @@ focus:ring-0 focus:border-gray-400";
                     )}
                   </div>
                   <div>
-                    <label className="text-gray-300 text-base block mb-1">
-
+                    <label className="text-gray-300 text-sm block mb-1">
                       - Teléfono
                     </label>
                     <input
@@ -987,12 +1011,43 @@ focus:ring-0 focus:border-gray-400";
                         {errors.phone}
                       </p>
                     )}
-
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="md:col-span-2">
+                      <label className="text-gray-300 text-sm block mb-1">
+                        - Usuario
+                      </label>
+                      <input
+                        name="username"
+                        value={form.username}
+                        onChange={onChange}
+                        onBlur={onBlur}
+                        type="text"
+                        required
+                        autoComplete="username"
+                        placeholder="p. ej. juan.perez"
+                        aria-invalid={!!errors.username}
+                        className={`${inputBase} ${
+                          errors.username && "border-red-500"
+                        }`}
+                      />
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        Mín. 4, empieza con letra. Solo letras, números, ".",
+                        "_" o "-".
+                      </p>
+                      {errors.username && (
+                        <p className="mt-1 text-xs text-red-400">
+                          {errors.username}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
+
+                {/* Password / Confirm */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-gray-300 text-base block mb-1">
+                    <label className="text-gray-300 text-sm block mb-1">
                       - Contraseña
                     </label>
 
@@ -1023,6 +1078,8 @@ focus:ring-0 focus:border-gray-400";
                         )}
                       </button>
                     </div>
+
+                    {/* Barra de fortaleza */}
                     {form.password &&
                       (() => {
                         const { label, color, percent } = passwordStrength(
@@ -1045,8 +1102,7 @@ focus:ring-0 focus:border-gray-400";
                         );
                       })()}
 
-                    <p className="text-sm leading-tight text-gray-400 mt-0.5">
-
+                    <p className="text-[10px] leading-tight text-gray-400 mt-0.5">
                       Debe incluir mayúscula, minúscula, número y caracter
                       especial.
                     </p>
@@ -1058,8 +1114,7 @@ focus:ring-0 focus:border-gray-400";
                   </div>
 
                   <div>
-                    <label className="text-gray-300 text-base block mb-1">
-
+                    <label className="text-gray-300 text-sm block mb-1">
                       - Repite contraseña
                     </label>
                     <div className="relative">
@@ -1097,11 +1152,12 @@ focus:ring-0 focus:border-gray-400";
                   </div>
                 </div>
 
-                <p className="text-gray-300 text-base">
+                {/* Intereses */}
+                <p className="text-gray-300">
                   Indique los servicios que necesitas:
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                  <label className="flex items-center gap-2 text-gray-200 text-sm">
+                  <label className="flex items-center gap-2 text-gray-200 text-xs">
                     <input
                       type="checkbox"
                       name="interesDolar"
@@ -1112,8 +1168,7 @@ focus:ring-0 focus:border-gray-400";
                     />
                     Plataforma Dólar
                   </label>
-                  <label className="flex items-center gap-2 text-gray-200 text-sm leading-tight">
-
+                  <label className="flex items-center gap-2 text-gray-200 text-xs leading-tight">
                     <input
                       type="checkbox"
                       name="interesAnalisis"
@@ -1128,9 +1183,10 @@ focus:ring-0 focus:border-gray-400";
                 {errors.interes && (
                   <p className="text-xs text-red-400">{errors.interes}</p>
                 )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
-                  <label className="flex items-start gap-2 text-gray-300 text-sm leading-tight">
 
+                {/* Términos */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                  <label className="flex items-start gap-2 text-gray-300 text-xs leading-tight">
                     <input
                       type="checkbox"
                       name="aceptaTyC"
@@ -1140,17 +1196,15 @@ focus:ring-0 focus:border-gray-400";
                     />
                     <span>
                       Acepto los{" "}
-                      <a
-
+                      <Link
                         href="https://set-icap.com/terminos-y-condiciones.pdf"
                         className="underline"
                       >
                         Términos y Condiciones
-                      </a>
+                      </Link>
                     </span>
                   </label>
-                  <label className="flex items-start gap-2 text-gray-300 text-sm leading-tight sm:col-span-2">
-
+                  <label className="flex items-start gap-2 text-gray-300 text-xs leading-tight sm:col-span-2">
                     <input
                       type="checkbox"
                       name="aceptaDatosFX"
@@ -1159,17 +1213,16 @@ focus:ring-0 focus:border-gray-400";
                       className="accent-[#1f4e85] mt-0.5"
                     />
                     <span>
-                      Acepto las{" "}
-                      <a
+                      Acepto las {""}
+                      <Link
                         href="https://set-icap.com/Descargas/Autorizaci%C3%B3n%20Tratamiento%20de%20Datos%20personales%20Set-Icap%20Fx.pdf"
                         className="underline"
                       >
-                        Políticas de Tratamiento de Datos personales SET-ICAP FX
-                      </a>
+                        Políticas de Tratamiento de Datos personales SET‑ICAP FX
+                      </Link>
                     </span>
                   </label>
-                  <label className="flex items-start gap-2 text-gray-300 text-sm leading-tight sm:col-span-2">
-
+                  <label className="flex items-start gap-2 text-gray-300 text-xs leading-tight sm:col-span-2">
                     <input
                       type="checkbox"
                       name="aceptaDatosSecurities"
@@ -1178,15 +1231,14 @@ focus:ring-0 focus:border-gray-400";
                       className="accent-[#1f4e85] mt-0.5"
                     />
                     <span>
-                      Acepto las{" "}
-                      <a
+                      Acepto las {""}
+                      <Link
                         href="https://set-icap.com/Descargas/Autorizaci%C3%B3n%20Tratamiento%20de%20Datos%20personales%20Set-Icap%20Securities.pdf"
                         className="underline"
                       >
-                        Políticas de Tratamiento de Datos personales SET-ICAP
+                        Políticas de Tratamiento de Datos personales SET‑ICAP
                         SECURITIES
-                      </a>
-
+                      </Link>
                     </span>
                   </label>
                 </div>
@@ -1194,15 +1246,22 @@ focus:ring-0 focus:border-gray-400";
                   <p className="text-xs text-red-400">{errors.policies}</p>
                 )}
               </div>
-              <br />
+              <br></br>
+              {/* FOOTER STICKY: (boton + link) */}
               <div className="-mx-5 sm:-mx-6 sticky bottom-0 bg-[#1f1f1f] border-t border-gray-700 px-5 sm:px-6 pt-1.5 pb-1.5">
-                <button className="w-full bg-[#1f4e85] text-white py-1.5 text-base rounded-sm hover:bg-[#173861] transition-colors disabled:opacity-60">
+                <button
+                  className="w-full bg-[#1f4e85] text-white py-1.5 text-sm rounded-sm hover:bg-[#173861] transition-colors disabled:opacity-60"
+                  disabled={submitting}
+                >
                   {submitting ? "Registrando..." : "Registrarse"}
                 </button>
                 <div className="mt-1 text-center">
-                  <a href="/" className="text-sm text-gray-300 hover:underline">
+                  <Link
+                    href="/"
+                    className="text-xs text-gray-300 hover:underline"
+                  >
                     Regresar al inicio de sesión
-                  </a>
+                  </Link>
                 </div>
               </div>
             </form>

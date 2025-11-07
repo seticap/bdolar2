@@ -1,16 +1,19 @@
-'use client';
+"use client";
 
-import React from 'react';
-import NavBar from './components/NavBar';
-import { Card } from '@/components/ui/card';
-import { SectionCards, SectionCardsRight } from './components/section-cards';
-import InfoPage from './components/InfoPage';
-import FooterPage from './components/Footer';
-import { useWebSocketData } from './services/WebSocketDataProvider';
-import DollarChart from './components/DollarChart';
-import Carrousel from './components/Carrousel';
+import NavBar from "./components/NavBar";
+import React, { useEffect, useState } from "react";
+import { Card } from "@/components/ui/card";
+import { SectionCards, SectionCardsRight } from "./components/section-cards";
+import InfoPage from "./components/InfoPage";
+import FooterPage from "./components/Footer";
+import { useWebSocketData } from "./services/WebSocketDataProvider";
+import DollarChart from "./components/DollarChart";
+import { CarrouselEmpresas, CarrouselIndices } from "./components/Carrousel";
 
-
+// Funciones auxiliares para días festivos (copiadas del primer código)
+function toYMD(date) {
+  return date.toISOString().split('T')[0];
+}
 
 function nthDow(year, month, dow, n) {
   const first = new Date(year, month, 1);
@@ -18,13 +21,11 @@ function nthDow(year, month, dow, n) {
   return new Date(year, month, 1 + delta);
 }
 
-
 function lastDow(year, month, dow) {
   const last = new Date(year, month + 1, 0);
   const delta = (7 + last.getDay() - dow) % 7;
   return new Date(year, month + 1, 0 - delta);
 }
-
 
 function observed(d) {
   const out = new Date(d);
@@ -58,6 +59,7 @@ function isUsFederalHoliday(date = new Date()) {
   return list.includes(ymd);
 }
 
+// Componente HolidayToast (copiado del primer código)
 function HolidayToast({ show, onClose, duration = 6000 }) {
   const [pct, setPct] = React.useState(0);
   React.useEffect(() => {
@@ -127,12 +129,15 @@ function HolidayToast({ show, onClose, duration = 6000 }) {
     </div>
   );
 }
-export default function LandingPage() {
+
+const LandingPage = () => {
   const { dataById } = useWebSocketData();
-  const promedio = dataById['1007'];
-  const [showHoliday, setShowHoliday] = React.useState(false);
-  const TOAST_DURATION = 180_000;
-  React.useEffect(() => {
+  const promedio = dataById["1007"];
+  const [showHoliday, setShowHoliday] = useState(false);
+  const TOAST_DURATION = 180000; // 3 minutos
+
+  // Efecto para mostrar el alert de día festivo
+  useEffect(() => {
     const t1 = setTimeout(() => setShowHoliday(true), 150);
     const t2 = setTimeout(() => setShowHoliday(false), 150 + TOAST_DURATION);
     return () => {
@@ -150,47 +155,59 @@ export default function LandingPage() {
           <div className="xl:col-span-1">
             <SectionCards />
           </div>
-          <div className="xl:col-span-4 xl:col-start-3 lg:grid-cols-2 lg:col-span-2 lg:col-start-2 top-8">
+
+          <div className="xl:col-span-4 xl:col-start-2 lg:col-span-2 mx-2">
+            {/* Contenedor relativo para el HolidayToast */}
             <div
               className={`
                 relative flex flex-col sm:flex-row justify-center items-center
-                px-1
+                gap-4 px-1
                 transition-[gap] duration-500
-                ${showHoliday ? 'gap-6 sm:gap-40' : 'gap-6 sm:gap-20'}
+                ${showHoliday ? 'sm:gap-40' : 'sm:gap-4'}
               `}
-              style={{ minHeight: 120 }}
+              style={{ minHeight: '120px' }}
             >
-              <HolidayToast show={showHoliday} onClose={() => setShowHoliday(false)} duration={TOAST_DURATION} />
+              {/* Holiday Toast - aparece en el centro */}
+              <HolidayToast 
+                show={showHoliday} 
+                onClose={() => setShowHoliday(false)} 
+                duration={TOAST_DURATION} 
+              />
 
-              <Card
+              {/* Card CIERRE con animación */}
+              <Card 
                 className={`
-                  min-w-[230px] w-auto flex-shrink-0 h-28
-                  flex flex-col justify-start pt-4 items-center
+                  min-w-[400px] w-auto flex-shrink-0 h-28 
+                  flex flex-col justify-start pt-4 items-center 
                   text-green-600 bg-custom-colortwo border-none
                   transition-transform duration-500
                   ${showHoliday ? 'sm:-translate-x-24' : 'sm:translate-x-0'}
                 `}
               >
-
                 <h3 className="text-xl text-white">CIERRE</h3>
                 <h1 className="text-5xl font-bold mt-0 leading-1">
-                  {promedio?.close || '-'}</h1>
+                  {promedio?.close || "-"}
+                </h1>
               </Card>
-              <Card
+
+              {/* Card PROMEDIO con animación */}
+              <Card 
                 className={`
-                  min-w-[230px] w-auto flex-shrink-0 h-28
-                  flex flex-col justify-start pt-4 items-center
+                  min-w-[400px] w-auto flex-shrink-0 h-28 
+                  flex flex-col justify-start pt-4 items-center 
                   text-red-600 bg-custom-colortwo border-none
                   transition-transform duration-500
                   ${showHoliday ? 'sm:translate-x-24' : 'sm:translate-x-0'}
                 `}
               >
                 <h3 className="text-xl text-white">PROMEDIO</h3>
-                <h1 className="text-5xl font-bold mt-0 leading-1">{promedio?.avg || '-'}</h1>
+                <h1 className="text-5xl font-bold mt-0 leading-1">
+                  {promedio?.avg || "-"}
+                </h1>
               </Card>
             </div>
-            <div className="lg:row-span-4">
 
+            <div>
               <DollarChart />
             </div>
           </div>
@@ -200,8 +217,11 @@ export default function LandingPage() {
           </div>
         </div>
       </div>
+      <CarrouselIndices />
       <InfoPage />
       <FooterPage />
     </>
   );
-}
+};
+
+export default LandingPage;

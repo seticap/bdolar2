@@ -1,35 +1,7 @@
-/**
- * components/ui/input.jsx (o ruta equivalente)
- * Autor: Juan Jose Peña Quiñonez — CC: 1000273604
- *
- * Input — Campo de texto estilizado con Tailwind.
- * - Conserva la semántica y accesibilidad de <input /> nativo.
- * - Expone un `data-slot="input"` para testeo/estilado dirigido.
- * - Integra estados: focus-visible, disabled, invalid (vía aria-invalid).
- * - Soporta archivos (clases `file:*` aplican al botón del file input).
- *
- * Dependencias:
- *  - React
- *  - cn util (merge de clases): "@/lib/utils"
- */
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
-/**
- * Componente Input.
- *
- * @param {InputProps} props
- *  - `className`   Clases Tailwind adicionales para extender el estilo.
- *  - `type`        Tipo de input (text, email, password, number, file, etc).
- *  - ...props      Cualquier prop válida de <input> (name, value, onChange, aria-*, etc.).
- *
- * Estados visuales y accesibilidad:
- *  - `focus-visible`: resalta foco vía teclado con borde + ring.
- *  - `disabled`: desactiva interacción y baja opacidad.
- *  - `aria-invalid="true"`: muestra estilos de error (borde/ring destructivo).
- *  - `selection:*`: colores de selección de texto.
- *  - `file:*`: estilo del botón interno cuando `type="file"`.
- */
+
 function Input({
   className,
   type,

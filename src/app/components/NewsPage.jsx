@@ -5,29 +5,30 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useInfoData } from "../services/InfoDataProvider";
 import Link from "next/link";
 
-const NewsPage = () => {
-  const [currentSlide, setCurrentSlide] = useState(0)
-  const {noticias} = useInfoData()
-  const gruposNoticias = [];
-  for (let i = 0; i < noticias.length; i += 4) {
-    gruposNoticias.push(noticias.slice(i, i + 4));
-  }
-  const nextSlide = () => {
-    setCurrentSlide((prev) =>
-      prev === noticias.length - 1 ? 0 : prev + 1
-    );
-  };
-  const prevSlide = () => {
-    setCurrentSlide((prev) =>
-      prev === 0 ? noticias.length - 1 : prev - 1
-    );
-  };
+const PAGE_SIZE = 3;
+
+export default function NewsPage() {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const { noticias = [] } = useInfoData();
+
+  const gruposNoticias = useMemo(() => {
+    const out = [];
+    for (let i = 0; i < noticias.length; i += PAGE_SIZE) {
+      out.push(noticias.slice(i, i + PAGE_SIZE));
+    }
+    return out;
+  }, [noticias]);
+
+  const totalSlides = Math.max(1, gruposNoticias.length);
+
+  const nextSlide = () => setCurrentSlide((p) => (p + 1) % totalSlides);
+  const prevSlide = () =>
+    setCurrentSlide((p) => (p - 1 + totalSlides) % totalSlides);
 
   return (
     <div className="relative w-full px-4 py-0">
       <div className="relative">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[300px]">
-
+        <div className="grid grid-cols-3 gap-3 min-h-[300px]">
           {gruposNoticias[currentSlide]?.map((noticias, index) => (
             <div
               key={index}
@@ -43,6 +44,8 @@ const NewsPage = () => {
             </div>
           ))}
         </div>
+
+        {/* Controles de navegación */}
         <button
           onClick={prevSlide}
           className="absolute left-[-2.5rem] top-1/2 -translate-y-1/2 z-10 bg-black bg-opacity-50 p-2 rounded-full hover:bg-opacity-70"
@@ -57,8 +60,9 @@ const NewsPage = () => {
           <ChevronRight className="h-6 w-6" />
         </button>
       </div>
-      <div className="flex justify-center mt-4 space-x-2">
 
+      {/* Indicadores de paginación */}
+      <div className="flex justify-center pt-5 space-x-2">
         {gruposNoticias.map((_, index) => (
           <button
             key={index}

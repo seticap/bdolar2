@@ -1,59 +1,9 @@
-/**
- * components/InfoPage.jsx (o ruta equivalente)
- *
- * InfoPage — Panel informativo de 3 columnas:
- *   1) EMPRESAS: tabla simple con nombre, valor y variación (%)
- *   2) ÍNDICES ACCIONARIOS: tabla simple + MiniChart embebido
- *   3) NOTICIAS ACTUALES: feed de noticias (NewsPage)
- *
- * Características:
- * - Client Component (Next.js App Router) — usa hooks de contexto para datos.
- * - Layout responsive con Tailwind:
- *     - 1 columna en móviles
- *     - 6 columnas en `lg`, con spans: (2 / 1 / 3)
- * - Scroll interno en tarjetas, encabezados pegados visualmente con altura fija.
- * - Color theme oscuro y clases utilitarias personalizadas (bg-custom-colortwo, bg-backgroundtwo).
- *
- * Dependencias:
- * - TailwindCSS (estilos utilitarios)
- * - UI local (`@/components/ui/card`): Card, CardHeader, CardTitle, CardContent
- * - `useInfoData`: proveedor de datos para empresas e índices
- * - `MiniChart`: micro gráfico para índices
- * - `NewsPage`: feed de noticias (contenido principal de la tercera columna)
- *
- * Contrato de datos esperado desde `useInfoData()`:
- *   const { empresas, indices } = useInfoData();
- *   - empresas: Array<{ nombre: string; valor: string|number; variacion: string }>
- *   - indices:  Array<{ nombre: string; valor: string|number; variacion: string }>
- *
- *   Notas sobre `variacion`:
- *   - Se asume string con signo (ej.: "-0.54%" o "0.73%").
- *   - Se pinta en rojo si empieza con "-", en verde en caso contrario.
- *
- * Accesibilidad:
- * - Las listas están renderizadas como `div` flex por diseño; si requieres semántica tabular, considera <table>.
- * - Imágenes con `alt` descriptivo (BVC y LR).
- *
- * Rutas de imágenes:
- * - Aquí se usa `img src="images/..."`
- * - En Next.js, si las imágenes están en `/public/images`, usa rutas absolutas `/images/...`
- *   para evitar problemas de path relativos en nested routes.
- */
 "use client"; // Directiva para Next.js (indica que este componente se ejecuta en el cliente).
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import NewsPage from "./NewsPage";
 import { useInfoData } from "../services/InfoDataProvider";
 import { MiniChart } from "./MiniChart";
-/**
- * InfoPage — Panel informativo (Empresas / Índices / Noticias)
- *
- * Datos:
- * - `empresas` e `indices` provienen del contexto `useInfoData()`.
- * - Cada ítem debe incluir `nombre`, `valor` y `variacion` (string con posible "-").
- *
- * @returns {JSX.Element}
- */
 
 const InfoPage = () => {
   const { empresas, indices } = useInfoData();
