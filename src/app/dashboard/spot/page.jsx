@@ -57,7 +57,11 @@ import Footer from '../../components/Footer'
 import PrincesPanel from "../../components/PrincesPanel";
 import { SectionCards, SectionCardsRight } from "../../components/section-cards";
 import NewsPage from "../../components/NewsPage";
-import { Card } from "../../../components/ui/card";
+import { Card,
+    CardHeader,
+    CardTitle,
+    CardContent
+ } from "../../../components/ui/card";
 import DollarChart from "../../components/DollarChart";
 
 import {
@@ -173,7 +177,23 @@ export default function spotPage() {
             {/* Columna de noticias (1/3 del ancho en ≥lg) */}
             <aside className="lg:col-span-1">
               <div className="rounded-xl border border-slate-700 bg-[#0d0f16]">
-                <NewsPage height={520} />
+                {/* === Tarjeta de noticias idéntica a InfoPage === */}
+                <Card
+                  className="bg-custom-colortwo text-white border-none h-auto min-h-[60vh]"
+                  style={{ minHeight: "520px" }}
+                >
+                  <CardHeader className="bg-red-700 flex justify-between items-center mt-[-24px] h-8 sm:h-10">
+                    <CardTitle className="text-sm sm:text-xl font-semibold">
+                      NOTICIAS ACTUALES
+                    </CardTitle>
+                    {/* Usa ruta absoluta si está en /public/images */}
+                    <img src="/images/larepublica.png" alt="LR" className="h-4 sm:h-6" />
+                  </CardHeader>
+                  <CardContent className="h-full overflow-y-auto max-h-[calc(100%-40px)] scrollbar-custom">
+                    <NewsPage />
+                  </CardContent>
+                </Card>
+                {/* === Fin tarjeta de noticias === */}
               </div>
             </aside>
           </div>

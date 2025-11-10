@@ -1,35 +1,4 @@
-//src/app/components/DollarChart.jsx
 "use client"
-
-/**
- * DollarChart
- * -------------
- * Componente de gráfico intradía (USD/COP) basado en `lightweight-charts`.
- * Dibuja:
- *  - Serie principal de precio (BaselineSeries) con rellenos arriba/abajo.
- *  - Serie de montos (HistogramSeries) en escala derecha.
- *  - Línea de referencia en el primer valor del día (price line "Inicio").
- *  - Tooltip manual sincronizado con el crosshair.
- *
- * Datos:
- *  - Se consumen por WebSocket (id=1000) con un payload tipo string "raro"
- *    que contiene `labels`, `data` (precios) y `data` (montos). El payload
- *    es parseado aquí mismo y transformado a puntos con timestamp para
- *    alimentar las series.
- *
- * Interfaz / UX:
- *  - Ajuste responsive: detecta mobile/tablet para ancho/alto del chart.
- *  - Time scale muestra HH:mm en zona local del navegador (sin segundos).
- *  - Crosshair con líneas punteadas y tooltip flotante.
- *  - auto-fit al rango de datos y control min/max de barras visibles.
- *
- * Limpieza:
- *  - Desuscribe eventos y elimina el chart en unmount.
- *  - Desconecta el WS en unmount de este componente.
- *
- * NOTA: Este componente no persiste ni comparte datos de gráfico con el
- *       provider de gráficos. Sólo actualiza su propio canvas.
- */
 
 import { useEffect, useState, useRef } from "react";
 import {
@@ -43,89 +12,60 @@ import { webSocketServices, tokenServices } from "../services/socketService";
 import { useWebSocketData } from "../services/WebSocketDataProvider";
 
 const DollarChart = () => {
-// Helper expuesto por el provider global para registrar datos de ids ≠ 1000
+    
+  // Referencias y estado del componente
+  // Contexto: función para actualizar datos que no son de tipo 1000
   const { updateData } = useWebSocketData();
 
-  /** Contenedor DOM del chart. */
-  const chartContainerRef = useRef(null);
-  /** Instancia del chart (createChart). */
-  const chartRef = useRef(null);
-  /** Serie de precio (BaselineSeries). */
-  const priceSeriesRef = useRef(null);
-  /** Serie de montos (HistogramSeries). */
-  const mountSeriesRef = useRef(null);
-  /** Referencia a la price line de "Inicio" para poder removerla/recrear. */
-  const inicioLineRef = useRef(null);
+  // Referencias para almacenar el contenedor del gráfico y las series
+  const chartContainerRef = useRef(null); // Referencia al contenedor HTML del gráfico
+  const chartRef = useRef(null); // Referencia al gráfico creado
+  const priceSeriesRef = useRef(null); // Referencia a la serie de precios
+  const mountSeriesRef = useRef(null); // Referencia a la serie de montos (volúmenes)
+  const inicioLineRef = useRef(null); // Línea de referencia para el precio inicial
 
-  /** Timestamp de la última actualización (ms). */
-  const [lastUpdateTime, setLastUpdateTime] = useState(null);
-  /** Última etiqueta (label) recibida HH:mm del WS 1000. */
-  const [lastUpdateLabel, setLastUpdateLabel] = useState("");
-  /** Flags de diseño responsive. */
-  const [isMobile, setIsMobile] = useState(false);
-  const [isTablet, setIsTablet] = useState(false);
-  /** Fecha actual (dd/MM/yyyy), UI opcional. */
-  const [currentDate, setCurrentDate] = useState("");
-  /** Flag de vida del componente para evitar sets en unmount. */
-  const isMounted = useRef(true);
+  // Estado para información de actualización (Estados del componente)
+  const [lastUpdateTime, setLastUpdateTime] = useState(null); // Marca de tiempo de la última actualización
+  const [lastUpdateLabel, setLastUpdateLabel] = useState(""); // Etiqueta de la última actualización
+  const [isMobile, setIsMobile] = useState(false); // Bandera para detectar si es un dispositivo móvil
+  const [isTablet, setIsTablet] = useState(false); // Bandera para detectar si es tablet
+  const isMounted = useRef(true); // Controla si el componente sigue montado para evitar actualizaciones inválidas
 
-  /**
-   * Retorna la fecha actual en formato dd/MM/yyyy.
-   * @returns {string}
-   */
-  const getCurrentDate = () => {
-    const now = new Date();
-    const day = now.getDate().toString().padStart(2, '0');
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const year = now.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
-
-/* ───────────────────────────── Fecha actual (cada 60s) ───────────────────────────── */
-  useEffect(() => {
-    const updateDate = () => {
-      setCurrentDate(getCurrentDate());
-    };
-
-    updateDate();
-    const interval = setInterval(updateDate, 60000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-/* ───────────────────────────── Flags responsive ───────────────────────────── */
+  // Hook para detectar el tamaño del dispositivo y ajustar el diseño
   useEffect(() => {
     const checkDevice = () => {
       const width = window.innerWidth;
-      setIsMobile(width < 768);
-      setIsTablet(width >= 768 && width < 1024);
+      setIsMobile(width < 768); // Menor a 768px = móvil
+      setIsTablet(width >= 768 && width < 1024); // Entre 768px y 1024px = tablet
     };
 
-    checkDevice();
-    window.addEventListener("resize", checkDevice);
-    return () => window.removeEventListener("resize", checkDevice);
+    checkDevice(); // Verifica inicialmente
+    window.addEventListener("resize", checkDevice); // Y al redimensionar la ventana
+    return () => window.removeEventListener("resize", checkDevice); // Limpieza
   }, []);
 
-/* ───────────────────────────── Inicialización del chart ───────────────────────────── */
+  // Hook para inicializar el gráfico cuando el componente se monta
   useEffect(() => {
-    isMounted.current = true;
-// Evitar recrear el chart si ya existe
+    isMounted.current = true; // Marca como montado
+
+    // Solo se ejecuta si hay un contenedor disponible y aún no se creó el gráfico
     if (chartContainerRef.current && !chartRef.current) {
       const chart = createChart(chartContainerRef.current, {
         layout: {
-          background: { type: "solid", color: "#202026" },
-          textColor: "lightgray",
+          background: { type: "solid", color: "#202026" }, // Fondo oscuro
+          textColor: "lightgray", // Texto en gris claro
         },
         grid: {
-          vertLines: "",
-          horzLines: "",
+          vertLines: "", // Sin líneas verticales
+          horzLines: "", // Sin líneas horizontales
         },
         crosshair: {
-          mode: CrosshairMode.Normal,
+          // Configuración del puntero cruzado
+          mode: CrosshairMode.Normal, // Modo normal (muestra líneas vertical y horizontal)
           vertLine: {
-            color: "rgba(200, 200, 200, 0.5)",
+            color: "rgba(200, 200, 200, 0.5)", // Color semitransparente
             width: 1,
-            style: LineStyle.Dashed,
+            style: LineStyle.Dashed, // Línea punteada
           },
           horzLine: {
             color: "rgba(200, 200, 200, 0.5)",
@@ -134,132 +74,137 @@ const DollarChart = () => {
           },
         },
         timeScale: {
-          rightOffset: 0,
-          barSpacing: 5,
-          fixLeftEdge: true,
-          lockVisibleTimeRangeOnResize: true,
-          rightBarStaysOnScroll: false,
-          borderVisible: false,
-          timeVisible: true,
-          // ⬇️ sólo HH:mm (sin segundos)
-          secondsVisible: false, // ✅ Cambiado a false para mostrar solo horas:minutos
+          // Configuración del eje X (tiempo)
+          rightOffset: 0, // Espacio adicional a la derecha del gráfico
+          barSpacing: 5, // Espacio entre barras o puntos del gráfico
+          fixLeftEdge: true, // Fija el borde izquierdo cuando se hace zoom
+          lockVisibleTimeRangeOnResize: true, // Mantiene el rango visible al redimensionar
+          rightBarStaysOnScroll: false, // El gráfico no se ajusta automáticamente al final con scroll
+          borderVisible: false, // Oculta el borde del eje X
+          timeVisible: true, // Muestra las etiquetas del eje X
+          secondsVisible: true, // Muestra segundos en la escala de tiempo
           tickMarkFormatter: (time) => {
-            const date = new Date(time * 1000);
-            const hours = date.getHours().toString().padStart(2, "0"); // ✅ Cambiado a getHours() local
-            const minutes = date.getMinutes().toString().padStart(2, "0"); // ✅ Cambiado a getMinutes() local
-            return `${hours}:${minutes}`; // ✅ Solo muestra hora:minutos sin fecha
+            // Función personalizada para mostrar marcas de tiempo
+            const date = new Date(time * 1000); // Convierte timestamp en objeto Date
+            const hours = date.getUTCHours().toString().padStart(2, "0");
+            const minutes = date.getUTCMinutes().toString().padStart(2, "0");
+            return `${hours}:${minutes}`; // Devuelve la hora en formato hh:mm
           },
         },
-      // Dimensiones segun dispositivo
-        width: isMobile
-          ? window.innerWidth - 40
-          : isTablet
-          ? window.innerWidth * 0.9
-          : 1100,
-        height: isMobile ? 400 : isTablet ? 500 : 705,
+        width: chartContainerRef.current.clientWidth,
+        height: isMobile ? 400 : isTablet ? 500 : 705, // Ajuste de alto según dispositivo
         leftPriceScale: {
-          visible: true,
+          visible: true, // Muestra la escala de precios a la izquierda
           scaleMargins: {
-            top: 0.1,
-            bottom: 0.1,
+            top: 0.1, // Margen superior
+            bottom: 0.1, // Margen inferior
           },
         },
         rightPriceScale: {
-          visible: false,
+          visible: false, // Oculta la escala derecha (montos se grafican sin escala visible)
           scaleMargins: {
-            top: 0.9,
+            top: 0.9, // Deja margen para evitar que los montos se sobrepongan arriba
             bottom: 0,
           },
         },
         localization: {
-          priceFormatter: (price) => price.toFixed(2),
+          priceFormatter: (price) => price.toFixed(2), // Formato para precios con 2 decimales
         },
       });
 
-    /* Serie de PRECIO (Baseline) */
+      // Agrega serie de precios (Baseline)
       priceSeriesRef.current = chart.addSeries(BaselineSeries, {
-        topLineColor: "rgba(34, 139, 34, 1)",
+        topLineColor: "rgba(34, 139, 34, 1)", // Verde para precios superiores al base
         topFillColor1: "rgba(34, 139, 34, 0.25)",
         topFillColor2: "rgba(34, 139, 34, 0.05)",
-        bottomLineColor: "rgba(165, 42, 42, 1)",
+        bottomLineColor: "rgba(165, 42, 42, 1)", // Rojo para precios inferiores al base
         bottomFillColor1: "rgba(165, 42, 42, 0.05)",
         bottomFillColor2: "rgba(165, 42, 42, 0.25)",
-        lineWidth: 2,
-        priceScaleId: "left",
-        priceLineVisible: false,
-        lastValueVisible: false,
+        lineWidth: 2, // Grosor de la línea de precios
+        priceScaleId: "left", // Asocia esta serie a la escala izquierda
+        priceLineVisible: false, // Oculta línea de precio actual
+        lastValueVisible: false, // Oculta etiqueta del último valor
       });
 
-    /* Serie de MONTOS (Histogram) */
+      // Agrega serie de montos (Histogram)
       mountSeriesRef.current = chart.addSeries(HistogramSeries, {
-        color: "gray",
-        priceFormat: { type: "volume" },
-        priceScaleId: "right",
+        color: "gray", // Color del histograma (montos)
+        priceFormat: { type: "volume" }, // Formato de volumen para la escala
+        priceScaleId: "right", // Se asociaría a escala derecha (aunque no visible)
       });
 
-      chartRef.current = chart;
+      chartRef.current = chart; // Guarda referencia al gráfico
 
-    /* ───────── Tooltip custom anclado al crosshair ───────── */
+      // Tooltip para el crosshair (puntero del gráfico)
+      // Se crea un elemento HTML flotante para mostrar datos dinámicos cuando el usuario pasa el mouse sobre el gráfico
       const tooltip = document.createElement("div");
-      tooltip.style.position = "absolute";
-      tooltip.style.zIndex = "1000";
-      tooltip.style.background = "black";
-      tooltip.style.color = "#fff";
-      tooltip.style.padding = "6px 10px";
-      tooltip.style.borderRadius = "4px";
-      tooltip.style.display = "none";
-      tooltip.style.fontSize = "12px";
-      tooltip.style.pointerEvents = "none";
-      tooltip.style.transition = "all 0.1s ease";
-      tooltip.style.border = "1px solid rgba(255, 255, 255, 0.1)";
-      chartContainerRef.current.appendChild(tooltip);
+      tooltip.style.position = "absolute"; // Posición absoluta para colocarse encima del gráfico
+      tooltip.style.zIndex = "1000"; // Se asegura de estar por encima de otros elementos
+      tooltip.style.background = "black"; // Fondo negro para contraste
+      tooltip.style.color = "#fff"; // Texto blanco
+      tooltip.style.padding = "6px 10px"; // Espaciado interno
+      tooltip.style.borderRadius = "4px"; // Bordes redondeados
+      tooltip.style.display = "none"; // Oculto por defecto
+      tooltip.style.fontSize = "12px"; // Tamaño del texto
+      tooltip.style.pointerEvents = "none"; // No interfiere con otros eventos del mouse
+      tooltip.style.transition = "all 0.1s ease"; // Animación suave
+      tooltip.style.border = "1px solid rgba(255, 255, 255, 0.1)"; // Borde tenue
+      chartContainerRef.current.appendChild(tooltip); // Se agrega el tooltip al contenedor del gráfico
 
-    // Actualiza contenido/posición del tooltip en movimiento del crosshair
+      // Suscribe una función al evento de movimiento del crosshair (puntero en forma de cruz)
       chart.subscribeCrosshairMove((param) => {
+        // Si no hay punto del cursor, datos de series o tiempo válido, oculta el tooltip
         if (param.point === undefined || !param.seriesData || !param.time) {
           tooltip.style.display = "none";
-          return;
+          return; // Termina ejecución si no hay datos válidos
         }
 
+        // Obtiene el valor de la serie de precios en la posición actual del cursor
         const price = param.seriesData.get(priceSeriesRef.current)?.value;
+        // Obtiene el valor de la serie de montos en la posición actual del cursor
         const mount = param.seriesData.get(mountSeriesRef.current)?.value;
 
+        // Si hay al menos un valor (precio o monto), construye el contenido del tooltip
         if (price !== undefined || mount !== undefined) {
-          const date = new Date(param.time * 1000);
-          const hours = date.getHours().toString().padStart(2, "0");
-          const minutes = date.getMinutes().toString().padStart(2, "0");
-          const timeStr = `${hours}:${minutes}`; //  Solo hora:minutos en el tooltip
+          const date = new Date(param.time * 1000); // Convierte el timestamp a objeto Date
+          const timeStr = date.toISOString().substr(11, 8); // Formato 'hh:mm:ss'
 
+          // Construcción dinámica del HTML para el tooltip, mostrando hora, precio y monto
           tooltip.innerHTML = `
-            <div><strong>Hora:</strong> ${timeStr}</div>
-            ${
-              price !== undefined
-                ? `<div><strong>Precio:</strong> ${price.toFixed(2)}</div>`
-                : ""
-            }
-            ${
-              mount !== undefined
-                ? `<div><strong>Montos:</strong> ${mount.toFixed(2)}</div>`
-                : ""
-            }
-          `;
+      <div><strong>Hora:</strong> ${timeStr}</div>
+      ${
+        price !== undefined
+          ? `<div><strong>Precio:</strong> ${price.toFixed(2)}</div>`
+          : ""
+      }
+      ${
+        mount !== undefined
+          ? `<div><strong>Montos:</strong> ${mount.toFixed(2)}</div>`
+          : ""
+      }
+    `;
 
+          // Muestra el tooltip
           tooltip.style.display = "block";
+          // Posiciona el tooltip a la derecha del cursor (con margen de 10px), limitado a la pantalla
           tooltip.style.left = `${Math.min(
             param.point.x + 10,
             window.innerWidth - 150
           )}px`;
+          // Posiciona el tooltip 30px debajo del cursor
           tooltip.style.top = `${param.point.y + 30}px`;
         }
       });
 
-    /* ───────── Handler de resize (responsive) ───────── */
+      // Función que se ejecuta cuando cambia el tamaño de la ventana para actualizar dimensiones del gráfico
       const handleResize = () => {
+        // Verifica que el gráfico esté montado y que existan las referencias necesarias
         if (
           chartRef.current &&
           chartContainerRef.current &&
           isMounted.current
         ) {
+          // Aplica nuevas dimensiones según el tipo de dispositivo
           chartRef.current.applyOptions({
             width: isMobile
               ? window.innerWidth - 40
@@ -267,131 +212,133 @@ const DollarChart = () => {
               ? window.innerWidth * 0.9
               : chartContainerRef.current.clientWidth,
             height: isMobile
-              ? 400
+              ? 400 // Altura fija para móviles
               : isTablet
-              ? 500
-              : chartContainerRef.current.clientHeight,
+              ? 500 // Altura para tablets
+              : chartContainerRef.current.clientHeight, // Altura igual al contenedor en escritorio
           });
         }
       };
 
+      // Agrega el event listener para ejecutar handleResize al cambiar tamaño de ventana
       window.addEventListener("resize", handleResize);
 
-    /* Limpieza al desmontar: desuscribir y destruir chart */
+      // Función de limpieza al desmontar el componente
       return () => {
-        isMounted.current = false;
-        window.removeEventListener("resize", handleResize);
-        
+        isMounted.current = false; // Marca que el componente ya no está activo
+        window.removeEventListener("resize", handleResize); // Quita el listener de resize
+
+        // Si el gráfico existe, intenta removerlo correctamente
         if (chartRef.current) {
           try {
-            chartRef.current.remove();
+            chartRef.current.remove(); // Limpia recursos internos del gráfico
           } catch (error) {
             console.warn("Error durante la limpieza del gráfico:", error);
           }
+          // Limpia referencias para liberar memoria y evitar errores
           chartRef.current = null;
           priceSeriesRef.current = null;
           mountSeriesRef.current = null;
         }
       };
     }
+    // useEffect dependiente del tipo de dispositivo (actualiza cuando cambia isMobile o isTablet)
   }, [isMobile, isTablet]);
 
-/* ───────────────────────────── WebSocket (1000 live) ───────────────────────────── */
+  // Manejo de WebSocket para recibir datos en tiempo real del gráfico
   useEffect(() => {
-  // Token tomado del servicio o del localStorage (compat)
+    // Obtiene el token de autenticación desde el servicio o del almacenamiento local
     const token =
       tokenServices.getToken() || localStorage.getItem("auth-token");
+    // Si no hay token disponible, muestra error y detiene la ejecución
     if (!token) {
       console.error("Token no disponible");
       return;
     }
-  // Conecta en canal "delay" (si backend lo soporta)
+
+    // Conecta al WebSocket utilizando el token y especificando el canal "delay"
     webSocketServices.connect(token, "delay");
 
-    /**
-     * Listener principal del WS.
-     *  - id=1000: parsea string con precios/montos/labels → actualiza chart
-     *  - otros ids: reenvía a `updateData` del provider global
-     */
-
+    // Función para manejar cada mensaje recibido desde el WebSocket
     const handleMessage = (msg) => {
+      // Si el componente ya no está montado, no se procesan los datos
       if (!isMounted.current) return;
 
       try {
+        // Intenta convertir el mensaje (que viene como string JSON) en un objeto
         const parsed = JSON.parse(msg);
-      // Payload de gráfico intradía
+        // Verifica si el mensaje corresponde al ID 1000 y contiene datos del gráfico
         if (
           parsed.id === 1000 &&
           parsed.result?.[0]?.datos_grafico_moneda_mercado
         ) {
+          // Extrae el string que contiene los datos del gráfico
           const dataStr = parsed.result[0].datos_grafico_moneda_mercado;
-      // Extrae primer `data:[...]` (precios), segundo `data:[...]` (montos), y `labels:[...]`
+
+          // Usa expresiones regulares para encontrar los datos de precios, montos y etiquetas
+          
           const pricesMatch = dataStr.match(/data:\s*\[([^\]]+)\]/);
           const amountsMatches = dataStr.match(/data:\s*\[([^\]]+)\]/g) || [];
           const labelsMatch = dataStr.match(/labels:\s*\[([^\]]+)\]/);
 
+          // Si encuentra al menos dos series y etiquetas, continúa el procesamiento
           if (pricesMatch && amountsMatches.length >= 2 && labelsMatch) {
-            const amountsMatch = amountsMatches[1];
+            const amountsMatch = amountsMatches[1]; // Segunda aparición de "data", que contiene los montos
 
+            // Convierte los precios de string a número
             const prices = (pricesMatch[1]?.split(",") || [])
               .map(Number)
               .filter((n) => !isNaN(n));
 
+            // Convierte los montos de string a número
             const amounts = (
               amountsMatch.match(/\[([^\]]+)\]/)?.[1]?.split(",") || []
             )
               .map(Number)
               .filter((n) => !isNaN(n));
 
+            // Limpia las etiquetas (horas) quitando comillas y espacios
             const labels = (labelsMatch[1]?.split(",") || [])
               .map((label) => label.trim().replace(/["']/g, ""))
               .filter(Boolean);
 
-      // Alinea arrays por la menor longitud disponible
+            // Determina la cantidad mínima de datos entre precios, montos y etiquetas
             const minLength = Math.min(
               prices.length,
               amounts.length,
               labels.length
             );
+            // Corta las tres series para que tengan el mismo tamaño y evitar errores
             const validPrices = prices.slice(0, minLength);
             const validAmounts = amounts.slice(0, minLength);
             const validLabels = labels.slice(0, minLength);
-      
-      // Actualiza el chart si hay datos válidos
+
+            // Si hay datos válidos y el componente sigue montado, actualiza el gráfico
             if (minLength > 0 && isMounted.current) {
-              updateChart(validPrices, validAmounts, validLabels);
-              setLastUpdateTime(Date.now());
-              setLastUpdateLabel(validLabels[validLabels.length - 1]);
+              updateChart(validPrices, validAmounts, validLabels); // Llama a función que actualiza el gráfico
+              setLastUpdateTime(Date.now()); // Actualiza el timestamp de la última actualización
+              setLastUpdateLabel(validLabels[validLabels.length - 1]); // Muestra la última hora
             }
           }
         } else if (parsed.id !== 1000) {
-      // Otros IDs: delega a provider para que el resto de la app los consuma
+          // Si el mensaje no es del ID 1000, lo pasa a la función general para otros IDs
           updateData(parsed.id, parsed);
         }
       } catch (error) {
-        console.error("Error al procesar mensaje:", error);
+        console.error("Error al procesar mensaje:", error); // Manejo de errores al parsear el mensaje
       }
     };
 
+    // Registra la función como listener de mensajes del WebSocket
     webSocketServices.addListener(handleMessage);
-      // Desconecta el WS al desmontar este componente
+
+    // Limpieza al desmontar el componente: desconecta el WebSocket
     return () => {
       webSocketServices.disconnect();
     };
-  }, []);
+  }, []); // Se ejecuta una sola vez al montar el componente
 
-  /**
-   * Actualiza el gráfico a partir de precios, montos y etiquetas de tiempo.
-   * - Convierte cada `label` (HH:mm[:ss]) a timestamp unix del "hoy".
-   * - Elimina timestamps duplicados conservando el último valor.
-   * - Ajusta el timeScale a los datos (fitContent) y controla el visible range.
-   * - Crea/actualiza la `priceLine` de referencia en el primer valor.
-   *
-   * @param {number[]} prices  - Valores de precio.
-   * @param {number[]} amounts - Valores de montos.
-   * @param {string[]} labels  - Etiquetas de tiempo ("HH:mm" o "HH:mm:ss").
-   */
-
+  //Actuaizacion del gráfico con nuevos datos
   const updateChart = (prices, amounts, labels) => {
     if (
       !isMounted.current ||
@@ -403,17 +350,13 @@ const DollarChart = () => {
     }
 
     try {
-      // Mapea HH:mm(:ss) → timestamp unix de HOY
       const dataWithTimestamps = labels
         .map((timeStr, i) => {
           const [hours, minutes, seconds] = timeStr.split(":").map(Number);
-          
-          // Fecha actual (local) + hora del label
-          const today = new Date();
-          today.setHours(hours, minutes, seconds || 0, 0); // Usar 0 segundos si no vienen
-          
+          const timeInSeconds = hours * 3600 + minutes * 60 + seconds;
+
           return {
-            time: Math.floor(today.getTime() / 1000), //  Timestamp Unix correcto
+            time: timeInSeconds,
             price: prices[i],
             amount: amounts[i],
             originalTime: timeStr,
@@ -425,7 +368,7 @@ const DollarChart = () => {
         )
         .sort((a, b) => a.time - b.time);
 
-     // Eliminar duplicados por timestamp conservando el último valor
+      // Eliminar duplicados manteniendo el último valor
       const uniqueData = [];
       const seenTimestamps = new Set();
 
@@ -435,7 +378,7 @@ const DollarChart = () => {
           uniqueData.unshift(dataWithTimestamps[i]);
         }
       }
-    // Transformación a formato de series lightweight
+
       const priceData = uniqueData.map((item) => ({
         time: item.time,
         value: item.price,
@@ -445,20 +388,20 @@ const DollarChart = () => {
         time: item.time,
         value: item.amount,
       }));
-    // Pintar data si hay puntos válidos
+
       if (priceData.length > 0 && mountData.length > 0) {
         priceSeriesRef.current.setData(priceData);
         mountSeriesRef.current.setData(mountData);
-    // Ajuste de tiempo al contenido
+
         chartRef.current.timeScale().fitContent();
-    // Rango visible mínimo y máximo de barras
+
         const totalBars = priceData.length;
         chartRef.current.timeScale().applyOptions({
           minVisibleBarCount: 5,
           maxVisibleBarCount: totalBars,
         });
 
-    // Línea de referencia en el primer valor (reinicia para evitar duplicados)
+        // Línea de referencia para el primer valor
         if (inicioLineRef.current) {
           priceSeriesRef.current.removePriceLine(inicioLineRef.current);
         }
@@ -474,7 +417,7 @@ const DollarChart = () => {
             axisLabelVisible: true,
             title: "Inicio",
           });
-      // Establece el "baseline" de la serie en el primer precio
+
           priceSeriesRef.current.applyOptions({
             baseValue: { type: "price", price: firstValue },
           });
@@ -485,7 +428,6 @@ const DollarChart = () => {
     }
   };
 
-  /* ───────────────────────────── Render ───────────────────────────── */
   return (
     <div
       style={{
@@ -494,15 +436,14 @@ const DollarChart = () => {
         boxSizing: "border-box",
         display: "flex",
         justifyContent: "center",
-        height: "100%",
-        position: 'relative',
+        height: "100%", // <-- Nuevo
       }}
     >
       <div
         ref={chartContainerRef}
         style={{
           width: "100%",
-          height: "100%",
+          height: "100%", // <-- Nuevo
           minHeight: "500px",
           display: "block",
           position: "relative",
@@ -512,7 +453,6 @@ const DollarChart = () => {
           backgroundColor: "#202026",
         }}
       />
-      
     </div>
   );
 }

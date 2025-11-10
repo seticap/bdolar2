@@ -103,7 +103,7 @@ export default function Sidebar({ onCollapseChange }) {
         <nav className="space-y-4">
           {/**Enlace 1: Spot USD/COP */}
           <Link
-            href="../dashboard/spot"
+            href="../spot"
             className="flex items-center space-x-4 hover:text-red-500 transition-colors"
           >
             <FaDollarSign size={18} />
@@ -111,7 +111,7 @@ export default function Sidebar({ onCollapseChange }) {
           </Link>
           {/**Enlace 2: Next day USD/COP */}
           <Link
-            href="../dashboard/nextday"
+            href="../nextday"
             className="flex items-center space-x-4 hover:text-red-500 transition-colors"
           >
             <FaCalendarAlt size={18} />
@@ -119,7 +119,7 @@ export default function Sidebar({ onCollapseChange }) {
           </Link>
           {/**Enlace 3: Estadísticas */}
           <Link
-            href="../dashboard/estadistica"
+            href="../estadistica"
             className="flex items-center space-x-4 hover:text-red-500 transition-colors"
           >
             <FaTable size={18} />

@@ -22,7 +22,7 @@ import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import Navbar2 from "../components/Navbar2";
 import useIsMobile from "../hooks/useIsMobile";
-import {WebSocketDataProvider} from "../services/WebSocketDataProvider"
+import { WebSocketDataProvider } from "../services/WebSocketDataProvider";
 
 export default function dashboardLayout({ children }) {
   //Detecta si está en pantalla móvil

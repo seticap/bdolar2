@@ -5,14 +5,126 @@ import { useWebSocketData } from "../services/WebSocketDataProvider";
 import dynamic from "next/dynamic";
 import { useDailySheets } from "../services/useDailySheets";
 import { useIntradaySheets } from "../services/IntradaySheetsProvider";
+import { useEffect, useState } from "react";
 
-/**
- * Gráfico dinámico (client-only). Se desactiva SSR porque el componente
- * (o sus dependencias) requieren `window`.
- */
 const GraficoInteractivo1 = dynamic(() => import("./CakeCount"), {
   ssr: false,
 });
+
+const StockdioForexWidget = () => {
+  const [isProduction, setIsProduction] = useState(false);
+
+  useEffect(() => {
+    const isProd =
+      window.location.hostname !== "localhost" &&
+      window.location.hostname !== "127.0.0.1";
+    setIsProduction(isProd);
+
+    if (
+      isProd &&
+      typeof window !== "undefined" &&
+      typeof window.stockdio_events === "undefined"
+    ) {
+      window.stockdio_events = true;
+      const stockdio_eventMethod = window.addEventListener
+        ? "addEventListener"
+        : "attachEvent";
+      const stockdio_eventer = window[stockdio_eventMethod];
+      const stockdio_messageEvent =
+        stockdio_eventMethod === "attachEvent" ? "onmessage" : "message";
+
+      stockdio_eventer(
+        stockdio_messageEvent,
+        function (e) {
+          if (
+            typeof e.data !== "undefined" &&
+            typeof e.data.method !== "undefined"
+          ) {
+            try {
+              eval(e.data.method);
+            } catch (error) {
+              console.error("Error ejecutando método Stockdio:", error);
+            }
+          }
+        },
+        false
+      );
+    }
+  }, []);
+
+  // Datos de ejemplo para desarrollo - basados en la imagen N°1
+  const monedasData = [
+    { symbol: "DÓLAR OBS", price: "0.9537", change: "-0.1160%" },
+    { symbol: "EURO", price: "5.7042", change: "+0.0009%" },
+    { symbol: "PESO COL", price: "20.2880", change: "-0.1160%" },
+    { symbol: "DÓLAR CAD", price: "5.7042", change: "-0.0059%" },
+    { symbol: "LIBRA ESTERLINA", price: "20.2880", change: "-0.0059%" },
+  ];
+
+  // Solo renderiza iframe si es producción
+  if (isProduction) {
+    return (
+      <div className="w-full h-full">
+        <iframe
+          id="st_1c6c27217f7c478ca8d904cd86b5b94d"
+          frameBorder="0"
+          scrolling="no"
+          width="100%"
+          height="350"
+          src="https://api.stockdio.com/visualization/financial/charts/v1/QuoteBoard?app-key=395DFC50D7D9415DA5A662933D57E22F&stockExchange=FOREX&symbols=EUR%2FUSD;GBP%2FUSD;USD%2FJPY;USD%2FCHF;AUD%2FUSD&includeCompany=false&includeChange=false&culture=Spanish-LatinAmerica&palette=Financial-Light&title=Watch%20List&borderColor=444444&backgroundColor=1a1a1a&captionColor=252525&titleColor=ffffff&labelsColor=cccccc&interlacedColor=252525&positiveColor=05ff05&negativeColor=ff0000&headerColor=cccccc&headerBackgroundColor=2d2d2d&onload=st_1c6c27217f7c478ca8d904cd86b5b94d"
+          style={{
+            border: "none",
+            minHeight: "350px",
+            borderRadius: "8px",
+          }}
+          title="Cotizaciones de Forex en Tiempo Real"
+        />
+      </div>
+    );
+  }
+
+  // En desarrollo, mostrar tabla simulada con datos de la imagen N°1
+  return (
+    <div className="w-full">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-600">
+              <th className="text-left pb-2 w-2/5 text-gray-300">DIVISA</th>
+              <th className="text-right pb-2 w-1/5 text-gray-300">VALOR</th>
+              <th className="text-right pb-2 w-1/5 text-gray-300">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {monedasData.map((item, index) => (
+              <tr
+                key={index}
+                className="border-b border-gray-700 hover:bg-gray-700/30 transition-colors"
+              >
+                <td className="py-2 text-white font-medium">{item.symbol}</td>
+                <td className="text-right font-mono text-white">
+                  {item.price}
+                </td>
+                <td
+                  className={`text-right font-mono ${
+                    item.change.startsWith("+")
+                      ? "text-green-400"
+                      : "text-red-400"
+                  }`}
+                >
+                  {item.change}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="text-xs text-gray-400 mt-2 text-center">
+          Datos de ejemplo - En producción se mostrarán datos en tiempo real de Stockdio
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const horasFijas = ["09:00", "10:00", "11:00", "12:00"];
 
@@ -25,9 +137,6 @@ export function SectionCards() {
 
   const { yesterday } = useDailySheets();
 
-  /**
-   * Normaliza un número que puede venir como string con comas
-   */
   const limpiarNumero = (valor) => {
     if (typeof valor === "string") {
       return parseFloat(valor.replace(/,/g, ""));
@@ -65,10 +174,10 @@ export function SectionCards() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-600">
-                  <th className="text-left pb-2 w-auto text-gray-300"></th>
-                  <th className="text-right pb-2 w-auto text-gray-300">HOY</th>
-                  <th className="text-right pb-2 w-auto text-gray-300">AYER</th>
-                  <th className="text-right pb-2 w-auto text-gray-300">VAR%</th>
+                  <th className="text-left pb-2 w-auto"></th>
+                  <th className="text-right pb-2 w-auto">HOY</th>
+                  <th className="text-right pb-2 w-auto">AYER</th>
+                  <th className="text-right pb-2 w-auto">VAR%</th>
                 </tr>
               </thead>
               <tbody>
@@ -125,8 +234,8 @@ export function SectionCards() {
             <table className="w-full text-sm min-w-[225px]">
               <thead>
                 <tr className="border-b border-gray-600">
-                  <th className="text-left w-auto text-gray-300"></th>
-                  <th className="text-center w-auto text-gray-300">HOY</th>
+                  <th className="text-left w-auto"></th>
+                  <th className="text-center w-auto">HOY</th>
                 </tr>
               </thead>
               <tbody>
@@ -156,9 +265,15 @@ export function SectionCards() {
             <table className="w-full text-sm min-w-[230px] border-separate border-spacing-y-2 sm:border-spacing-y-1">
               <thead>
                 <tr>
-                  <th className="text-center border-gray-600 border-b px-2 py-1 text-gray-300">HORA</th>
-                  <th className="text-center border-gray-600 border-b px-2 py-1 text-gray-300">PROMEDIO</th>
-                  <th className="text-center border-gray-600 border-b px-2 py-1 text-gray-300">CIERRE</th>
+                  <th className="text-center border-gray-600 border-b px-2 py-1">
+                    HORA
+                  </th>
+                  <th className="text-center border-gray-600 border-b px-2 py-1">
+                    PROMEDIO
+                  </th>
+                  <th className="text-center border-gray-600 border-b px-2 py-1">
+                    CIERRE
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -187,22 +302,16 @@ export function SectionCards() {
   );
 }
 
-/**
- * Sección derecha: gráfico, últimas transacciones y ultimas notificaciones.
- * Obtiene las operaciones del canal "1000".
- */
 export function SectionCardsRight() {
   const { dataById } = useWebSocketData();
   const datos = dataById["1000"];
-  /** Normaliza la estructura (hora, precio, monto) desde 3 arrays correlacionados*/
   const operaciones =
     datos?.labels?.map((hora, index) => ({
       hora,
       precio: datos.prices[index],
       monto: datos.amounts[index],
     })) || [];
-  
-  /** Últimas 6 operaciones para la tabla*/
+
   const ultimas7 = operaciones.slice(-6);
 
   return (
@@ -236,7 +345,7 @@ export function SectionCardsRight() {
                       <td className="text-right">
                         {operacion.precio?.toFixed(2) || "-"}
                       </td>
-                      <td className="text-right text-white">{operacion.monto || "-"}</td>
+                      <td className="text-right">{operacion.monto || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -244,51 +353,11 @@ export function SectionCardsRight() {
             </div>
           </CardContent>
         </Card>
-        {/* === CARD: MONEDAS === (EN ESPERA DE HACERLO FUNCIONAL) */}
+        {/* === CARD: MONEDAS EN TIEMPO REAL (CON FUNCIONALIDAD STOCKDIO) === */}
         <Card className="flex-1 min-w-[280px] bg-custom-colortwo text-white border-none p-2 mr-2">
-          <CardContent className="p-0 overflow-y-auto scrollbar-custom">
-            <div className="font-bold text-white mb-0.9">MONEDAS</div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[250px]">
-                <thead>
-                  <tr className="border-b border-gray-600">
-                    <th className="text-left pb-2 w-1/2">DIVISAS</th>
-                    <th className="text-right pb-2 w-1/4">VALOR</th>
-                    <th className="text-right pb-2 w-1/4">%</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { moneda: "DÓLAR OBS", valor: "0,9537", cambio: "-0.1160" },
-                    { moneda: "EURO", valor: "5,7042", cambio: "+0.0009" },
-                    { moneda: "PESO COL", valor: "20,2880", cambio: "-0.1160" },
-                    { moneda: "DÓLAR CAD", valor: "5,7042", cambio: "-0.0059" },
-                    {
-                      moneda: "LIBRA ESTERLINA",
-                      valor: "20,2880",
-                      cambio: "-0.0059",
-                    },
-                  ].map((item, index) => (
-                    <tr
-                      key={index}
-                      className="border-b border-gray-700 hover:bg-gray-700/50 transition-colors"
-                    >
-                      <td className="w-[55%] py-2">{item.moneda}</td>
-                      <td className="w-[25%] text-right">{item.valor}</td>
-                      <td
-                        className={`w-[20%] text-right font-mono ${
-                          item.cambio.startsWith("+")
-                            ? "text-green-400"
-                            : "text-red-400"
-                        }`}
-                      >
-                        {item.cambio}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <CardContent className="p-0">
+            <div className="font-bold text-white mb-2">MONEDAS EN TIEMPO REAL</div>
+            <StockdioForexWidget />
           </CardContent>
         </Card>
       </div>
