@@ -206,7 +206,11 @@ const DollarChart = () => {
         ) {
           // Aplica nuevas dimensiones según el tipo de dispositivo
           chartRef.current.applyOptions({
-            width: chartContainerRef.current.clientWidth, // Ancho igual al contenedor en escritorio
+            width: isMobile
+              ? window.innerWidth - 40
+              : isTablet
+              ? window.innerWidth * 0.9
+              : chartContainerRef.current.clientWidth,
             height: isMobile
               ? 400 // Altura fija para móviles
               : isTablet

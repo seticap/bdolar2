@@ -353,7 +353,6 @@ export function SectionCardsRight() {
             </div>
           </CardContent>
         </Card>
-
         {/* === CARD: MONEDAS EN TIEMPO REAL (CON FUNCIONALIDAD STOCKDIO) === */}
         <Card className="flex-1 min-w-[280px] bg-custom-colortwo text-white border-none p-2 mr-2">
           <CardContent className="p-0">
