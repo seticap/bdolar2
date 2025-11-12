@@ -350,13 +350,24 @@ const DollarChart = () => {
     }
 
     try {
-      const dataWithTimestamps = labels
+        const dataWithTimestamps = labels
         .map((timeStr, i) => {
           const [hours, minutes, seconds] = timeStr.split(":").map(Number);
-          const timeInSeconds = hours * 3600 + minutes * 60 + seconds;
+
+          // Construye una fecha completa con la fecha actual
+          const now = new Date();
+          const fullDate = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+            hours,
+            minutes,
+            seconds || 0
+          );
+          const unixTime = Math.floor(fullDate.getTime() / 1000); //Timestamp real en segundos
 
           return {
-            time: timeInSeconds,
+            time: unixTime,
             price: prices[i],
             amount: amounts[i],
             originalTime: timeStr,
