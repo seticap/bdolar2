@@ -74,7 +74,7 @@ export default function NewsPage() {
           {/* Controles */}
           <button
             onClick={prevSlide}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-green-400 p-1.5 rounded-r hover:bg-gray-700"
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-gray-800 p-1.5 rounded-r hover:bg-gray-700"
             aria-label="Anterior"
           >
             <ChevronLeft className="h-3.5 w-3.5 text-gray-300" />

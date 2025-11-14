@@ -12,14 +12,91 @@ import {
 } from "recharts";
 import { useInfoData } from "../services/InfoDataProvider";
 
+// Componente CustomTooltip más compacto
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload || !payload.length) return null;
+
+  const currentValue = payload[0].value;
+  
+  // Calcular variación respecto al primer valor del dataset
+  const firstPrice = payload[0].payload.firstPrice || currentValue;
+  const variation = firstPrice ? ((currentValue - firstPrice) / firstPrice * 100) : 0;
+  const isPositive = variation >= 0;
+
+  return (
+    <div
+      style={{
+        padding: '10px', // REDUCIDO de 14px a 10px
+        background: 'rgba(15, 23, 42, 0.98)',
+        color: 'white',
+        border: '1px solid rgba(148, 163, 184, 0.3)',
+        borderRadius: '6px', // REDUCIDO de 8px a 6px
+        fontSize: '12px', // REDUCIDO de 14px a 12px
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        pointerEvents: 'none',
+        zIndex: 1000,
+        backdropFilter: 'blur(12px)',
+        boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05)',
+        minWidth: '170px', // REDUCIDO de 210px a 170px
+      }}
+    >
+      <div style={{ marginBottom: '8px' }}> {/* REDUCIDO de 10px a 8px */}
+        <div style={{ 
+          fontWeight: 600, 
+          fontSize: '13px', // REDUCIDO de 15px a 13px
+          marginBottom: '2px', // REDUCIDO de 3px a 2px
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center' 
+        }}>
+          <span style={{ color: 'white' }}>IGBC</span>
+          <span style={{ color: 'white', fontSize: '11px' }}>{label}</span> {/* REDUCIDO de 13px a 11px */}
+        </div>
+      </div>
+      
+      {/* SECCIÓN DE PRECIO DESTACADA */}
+      <div style={{ marginBottom: '8px' }}> {/* REDUCIDO de 10px a 8px */}
+        <div style={{ 
+          fontSize: '11px', // REDUCIDO de 13px a 11px
+          color: 'rgba(255, 255, 255, 0.8)',
+          marginBottom: '2px' // REDUCIDO de 3px a 2px
+        }}>
+          Precio:
+        </div>
+        <div style={{ 
+          fontSize: '14px', // REDUCIDO de 17px a 14px
+          fontWeight: 700,
+          color: 'white'
+        }}>
+          {currentValue.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </div>
+      </div>
+
+      {/* VARIACIÓN */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '11px' }}> {/* REDUCIDO gap y fontSize */}
+        <span style={{ color: 'rgba(255, 255, 255, 0.8)' }}>Variación:</span>
+        <span style={{ 
+          textAlign: 'right', 
+          color: isPositive ? '#10b981' : '#ef4444', 
+          fontWeight: 600 
+        }}>
+          {isPositive ? '+' : ''}{variation.toFixed(2)}%
+        </span>
+      </div>
+    </div>
+  );
+};
+
 export function MiniChart() {
   const { grafica = [] } = useInfoData();
 
   const data = useMemo(
     () =>
-      (grafica ?? []).map((d) => ({
+      (grafica ?? []).map((d, index, array) => ({
         label: String(d.label),
         value: Number(d.value),
+        // Agregar firstPrice para calcular variación (primer valor del array)
+        firstPrice: array[0]?.value || Number(d.value)
       })),
     [grafica]
   );
@@ -55,16 +132,8 @@ export function MiniChart() {
             width={56}
             tick={{ fill: "#6b7280" }}
           />
-          <Tooltip
-            formatter={(v) =>
-              Number(v).toLocaleString("es-CO", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })
-            }
-            labelFormatter={(l) => l}
-            contentStyle={{ borderRadius: 6, border: "1px solid #e5e7eb" }}
-          />
+          {/* Tooltip personalizado */}
+          <Tooltip content={<CustomTooltip />} />
           <Area
             type="monotone"
             dataKey="value"
@@ -72,6 +141,7 @@ export function MiniChart() {
             fill="hsl(var(--chart-1))"
             fillOpacity={0.25}
             name="IGBC"
+            strokeWidth={2}
           />
         </AreaChart>
       </ResponsiveContainer>
