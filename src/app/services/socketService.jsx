@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import axios from "axios";
-import * as neffos from "neffos.js";
+import axios from "axios"
+import * as neffos from "neffos.js"
 
 const TOKEN_URL = "http://set-fx.com/api/v1/auth/access/token/";
 const WS_BASE_URL = "ws://set-fx.com/ws/dolar"; // base permanece igual

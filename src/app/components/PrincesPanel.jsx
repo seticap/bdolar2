@@ -1,7 +1,32 @@
 /**
  * app/components/PrincesPanel.jsx
- * -- Juan Jose Peña Quiñonez
- * -- CC:1000273604
+ * Autor: Juan Jose Peña Quiñonez — CC:1000273604
+ *
+ * Panel de visualización que orquesta cuatro tipos de gráficos:
+ *  - Precios (línea)
+ *  - Promedio
+ *  - Velas (candlestick)
+ *  - Bollinger
+ *
+ * Características:
+ *  - Tabs conmutables (estado interno)
+ *  - Selector de rango temporal propagado a cada gráfico y al proveedor WebSocket
+ *  - Suscripción a 4 canales de datos WebSocket (ids: 1001..1004) según `range`
+ *  - Estado de carga por pestaña (spinners) hasta recibir el payload
+ *  - Contenedor estilizado y responsivo
+ *
+ * Dependencias:
+ *  - React: useEffect, useState
+ *  - useWebSocketDataGrafico: proveedor que expone `request` y `useChartPayload`
+ *  - Componentes gráficos: PrecioGrafica, PromedioGrafico, VelasGrafico, BollingerGrafico
+ *
+ * Convenciones:
+ *  - `range`: "1D" | "5D" | "1M" | "6M" | "1A"
+ *  - Canales WebSocket:
+ *      1001 → precios
+ *      1002 → promedios
+ *      1003 → velas
+ *      1004 → bollinger (con params extra: sma=20, desv=2)
  */
 "use client";
 
@@ -12,15 +37,34 @@ import PromedioGrafico from "./PromedioGrafico";
 import VelasGrafico from "./VelasGrafico";
 import BollingerGrafico from "./BollingerGrafico";
 
+/** Definición de pestañas disponibles en el panel. */
 const TABS = [
   { key: "precios", label: "Precios" },
   { key: "promedio", label: "Promedio" },
   { key: "velas", label: "Velas" },
   { key: "bollinger", label: "Bollinger" },
 ];
-
+/** Rangos temporales soportados por el proveedor de datos y los gráficos. */
 const RANGES = ["1D", "5D", "1M", "6M", "1A"];
 
+/**
+ * @typedef {Object} PrincesPanelProps
+ * @property {string}   [className=""] - Clases extra para el contenedor principal.
+ * @property {any}      [baseDay=null] - Semilla opcional para componentes internos que lo soporten.
+ * @property {number}   [height=360]   - Alto en píxeles para cada gráfico.
+ * @property {'1D'|'5D'|'1M'|'6M'|'1A'|string} range - Rango temporal activo.
+ * @property {(r:string)=>void} onRangeChange - Callback para cambiar el rango global.
+ */
+
+/**
+ * Panel de gráficos con tabs y selector de rango; orquesta suscripciones WebSocket.
+ * - Envía `request()` a 4 canales (1001..1004) al cambiar `range`.
+ * - Lee payloads con `useChartPayload(channelId, range)`.
+ * - Renderiza cada gráfico o un spinner si falta el payload.
+ *
+ * @param {PrincesPanelProps} props
+ * @returns {JSX.Element}
+ */
 export default function PrincesPanel({
   className = "",
   baseDay = null,
@@ -28,10 +72,10 @@ export default function PrincesPanel({
   range,
   onRangeChange,
 }) {
-  // Pestaña activa de la UI (controlado internamente)
+  /** Pestaña activa de la UI (controlado internamente). */
   const [activeTab, setActiveTab] = useState("precios");
   
-  //Estado para tracking de carga
+  /** Estado de carga por pestaña (true = esperando payload). */
   const [isLoading, setIsLoading] = useState({
     precios: true,
     promedio: true,
@@ -43,7 +87,11 @@ export default function PrincesPanel({
   const { request, useChartPayload } = useWebSocketDataGrafico();
 
   /**
-   * Efecto: envía suscripciones/renovaciones cada vez que cambia el `range`.
+   * Suscripción a canales WebSocket al cambiar el rango.
+   * - 1001: precios
+   * - 1002: promedios
+   * - 1003: velas
+   * - 1004: bollinger (con SMA=20, desviación=2)
    */
    useEffect(() => {
     const lapse = (range || "1D").toUpperCase();
@@ -62,13 +110,17 @@ export default function PrincesPanel({
       1004: "bollinger",
     });
   }, [range, request]);
-  
+
+  /** Payloads por canal, vinculados al `range` actual. */
   const preciosPayload = useChartPayload(1001, range);
   const promediosPayload = useChartPayload(1002, range);
   const velasPayload = useChartPayload(1003, range);
   const bollingerPayload = useChartPayload(1004, range);
 
-  //useEffect para tracking de datos
+  /**
+   * Tracking de carga por pestaña, en función de si existe `payload`.
+   * - Cuando el payload llega, desactiva el spinner correspondiente.
+   */
   useEffect(() => {
     setIsLoading(prev => ({
       ...prev,
@@ -79,8 +131,9 @@ export default function PrincesPanel({
     }));
   }, [preciosPayload, promediosPayload, velasPayload, bollingerPayload]);
 
-  /**
-   * Lectura de payloads por tipo de gráfico, vinculados al `range` actual.
+/**
+   * Cambia el rango y propaga al componente padre.
+   * @param {'1D'|'5D'|'1M'|'6M'|'1A'|string} r
    */
   const handleRange = (r) => {
     onRangeChange(r);
@@ -120,7 +173,7 @@ export default function PrincesPanel({
           </div>
         </div>
 
-        {/* Selector de Rango temporal - Mejorado para móviles */}
+        {/* Selector de Rango temporal */}
         <div className="inline-flex items-center gap-1 rounded-full p-1 bg-white/[0.04] ring-1 ring-white/10 -mt-1 overflow-x-auto">
           {RANGES.map((r) => (
             <button
@@ -147,7 +200,7 @@ export default function PrincesPanel({
           width: "100%",
         }}
       >
-        {/*Pestaña Precios con spinner mejorado */}
+        {/* Pestaña: Precios */}
         {activeTab === "precios" &&
           (preciosPayload ? (
             <PrecioGrafica
@@ -163,7 +216,7 @@ export default function PrincesPanel({
             </div>
           ))}
 
-        {/* Pestaña Promedio con spinner mejorado */}
+        {/* Pestaña: Promedio */}
         {activeTab === "promedio" && (
           promediosPayload ? (
             <PromedioGrafico
@@ -181,7 +234,7 @@ export default function PrincesPanel({
           )
         )}
 
-        {/*Pestaña Velas con spinner mejorado */}
+        {/* Pestaña: Velas */}
         {activeTab === "velas" && (
           velasPayload ? (
             <VelasGrafico
@@ -199,7 +252,7 @@ export default function PrincesPanel({
           )
         )}
 
-        {/*Pestaña Bollinger con spinner mejorado */}
+        {/* Pestaña: Bollinger */}
         {activeTab === "bollinger" && (
           bollingerPayload ? (
             <BollingerGrafico

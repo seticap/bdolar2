@@ -1,3 +1,5 @@
+// src/app/components/NavBar.jsx
+
 "use client"; // Indica que este componente se debe renderizar del lado del cliente en Next.js
 
 // Importaciones necesarias
@@ -53,6 +55,14 @@ const Navbar = () => {
             sm:flex sm:static sm:justify-end sm:items-center sm:text-sm sm:bg-transparent sm:shadow-none
           `}
         >
+          <Button
+            variant="link"
+            className="text-left w-full sm:w-auto"
+            onClick={() => setOpenMenu(false)}
+          >
+            <a href="https://set-icap.com/contacto/">CONTACTO</a>
+          </Button>
+
           {/* Enlace externo a SET-FX */}
           <Button
             variant="link"
@@ -68,7 +78,7 @@ const Navbar = () => {
             className="w-full sm:w-auto"
             onClick={() => setOpenMenu(false)}
           >
-            <Link href="/register">REGISTRARSE</Link>
+            <Link href="/register">REGISTRARSE Y OBTENER UNA DEMO</Link>
           </Button>
 
           {/* Diálogo de inicio de sesión */}
@@ -90,11 +100,16 @@ const Navbar = () => {
 
           {/* Enlace interno a EPAYCO */}
           <Button
-            variant="link"
-            className="text-left w-full sm:w-auto"
+            variant="default"
+            className="w-full sm:w-auto bg-gradient-to-r from-[#1f4e85] to-[#2d5f8a] hover:from-[#2d5f8a] hover:to-[#3a6f95] text-white font-medium px-4 py-2 rounded-sm shadow-md hover:shadow-lg transition-all duration-300 border border-[#3a6f95] hover:border-[#4a7fa5] hover:scale-105"
             onClick={() => setOpenMenu(false)}
           >
-            <Link href="/epayco">EPAYCO</Link>
+            <Link href="/epayco" className="flex items-center tracking-wider">
+              <span className="relative">
+                EPAYCO
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-cyan-400 to-blue-400 transition-all duration-300 group-hover:w-full"></span>
+              </span>
+            </Link>
           </Button>
         </div>
       </div>

@@ -23,12 +23,13 @@ import Estadisticas from '../../components/Estadisticas';
 
 export default function EstadisticasPage() {
   return (
-    <div className="min-h-screen flex flex-col">
-      {/**Contenido principal: estadisticas */}
-      <main className="flex-grow bg-[#0c0c14] text-white">
+    // CAMBIO: Fondo actualizado para coincidir con el diseño general
+    <div className="min-h-screen flex flex-col bg-backgroundtwo">
+      {/** Contenido principal */}
+      <main className="flex-grow">
         <Estadisticas />
       </main>
-      {/**Pie de página */}
+      {/** Pie de página */}
       <Footer />
     </div>
   );

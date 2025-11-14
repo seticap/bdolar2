@@ -1,50 +1,104 @@
 /**
- * src/app/dashboard/nextday.jsx
+ * src/app/dashboard/NexdayPage.jsx
  * -- Juan Jose Peña Quiñonez
  * -- CC: 1000273604
  */
 "use client";
 
 /**
- * Página principal de "Nexday" (Dashboard).
+ * Página "Spot" del dashboard.
+ *
+ * Objetivo:
+ *  - Mostrar un overview del mercado USD/COP en tiempo real.
+ *  - Integrar métricas live (cierre/promedio), gráfico principal y panel de gráficos derivados.
+ *  - Incluir tarjetas informativas y feed de noticias.
  *
  * Estructura general:
- *  - Proveedor global de WebSocket (`WebSocketDataProvider`) para datos en vivo de la app.
- *  - Fila superior con:
- *      * Tarjetas resumen (izquierda y derecha)
- *      * Métricas en vivo (HeaderStats) + gráfico principal (DollarChart) al centro
- *  - Fila inferior con:
- *      * Panel de gráficos con pestañas (PrincesPanel) dentro de un provider dedicado
- *        (`WebSocketDataGraficosProvider`) que deriva el canal base hacia 1001..1004
- *      * Columna de noticias (NewsPage)
- *  - Footer global
+ *  <WebSocketDataProvider>           ← proveedor global: expone dataById y request WS
+ *    └─ Wrapper de la página
+ *       ├─ Fila superior (grid):
+ *       │   ├─ Izquierda: <SectionCards />               (tarjetas informativas)
+ *       │   ├─ Centro:    <HeaderStats /> + <DollarChart /> (métricas live + gráfico principal)
+ *       │   └─ Derecha:   <SectionCardsRight />          (tarjetas adicionales)
+ *       ├─ Fila inferior (grid):
+ *       │   ├─ Panel de gráficos (2/3):
+ *       │   │   └─ <WebSocketDataGraficosProvider range={range}>
+ *       │   │       └─ <PrincesPanel range onRangeChange /> (línea, velas, promedios, bollinger)
+ *       │   └─ Columna de noticias (1/3): <NewsPage />
+ *       └─ <Footer />
  *
- * Esta versión añade documentación y comentarios sin modificar la funcionalidad.
+ * Providers:
+ *  - WebSocketDataProvider:
+ *      Provee useWebSocketData() para acceder a dataById (mapa por id de canal).
+ *      En particular, el id 1007 emite ticks en tiempo real con valores { close, avg }.
+ *
+ *  - WebSocketDataGraficosProvider (anidado solo para el panel de gráficos):
+ *      Deriva datos del id 1007 y realiza cargas HTTP/caché para producir bloques consumibles
+ *      por los gráficos (ids lógicos 1001..1004). Recibe `range` (1D/5D/1M/6M/1A)
+ *      para gestionar qué conjunto cargar/mostrar.
+ *
+ * Estado local:
+ *  - range: controla el rango temporal del panel de gráficos (1D por defecto).
+ *
+ * Responsividad (Tailwind):
+ *  - Fila superior usa grid con:
+ *      - base: 1 columna
+ *      - lg:   4 columnas
+ *      - xl:   8 columnas
+ *    Para posicionar izquierda/centro/derecha con spans y starts distintos por breakpoint.
+ *
+ * Dependencias visibles:
+ *  - Footer, PrincesPanel, SectionCards, SectionCardsRight, NewsPage, Card, DollarChart
+ *  - WebSocketDataProvider, useWebSocketData
+ *  - WebSocketDataGraficosProvider
  */
 
 import Footer from "../../components/Footer";
 import PrincesPanel from "../../components/PrincesPanel";
-import { SectionCards, SectionCardsRight } from "../../components/section-cards";
-import NewsPage from "../../components/NewsPage";
-import { Card } from "../../../components/ui/card";
+import {
+  SectionCards,
+  SectionCardsRight,
+} from "../../components/section-cards-NextSpot";
+import NewsNextySpot from "../../components/NewsNextySpot";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "../../../components/ui/card";
 import DollarChart from "../../components/DollarChart";
+import AlertBanner from "../../components/AlertBanner"; // ← Importa el componente
 
 import {
   WebSocketDataProvider,
   useWebSocketData,
 } from "../../services/WebSocketDataProvider";
+
 import { WebSocketDataGraficosProvider } from "../../services/WebSocketDataProviderGraficos";
 import { useState } from "react";
 
-/* ────────────────────────────── Subcomponente ────────────────────────────── */
 /**
  * HeaderStats
- * Muestra métricas en vivo (CIERRE y PROMEDIO) a partir del canal `1007`.
- * Debe renderizarse dentro de `WebSocketDataProvider` para acceder a `useWebSocketData`.
+ *  - Lee datos en vivo del canal WS id = 1007 mediante useWebSicketData().
+ *  - Muestra  2 Métricas principales:
+ *    * CIERRE (close)
+ *    * PROMEDIO (avg)
+ *
+ * Si no hay datos todavía, muestra "-".
  */
+
 function HeaderStats() {
   const { dataById } = useWebSocketData();
-  /** @type {{ close?: number; avg?: number } | undefined} */
+  const [showAlert, setShowAlert] = useState(true);
+
+  /**
+   *Estructura esperada para dataById["1007"]:
+   * {
+   *  close?: number, // último precio/cierre o tick actual
+   *  avg?: number,  // promedio del periodo actual (definición depende del backend)
+   * }
+   */
+
   const promedio = dataById["1007"]; // tick en vivo: se espera { close, avg }
 
   return (
@@ -57,6 +111,9 @@ function HeaderStats() {
         </h1>
       </Card>
 
+      {/* Alert Banner - Agregado aquí */}
+      {showAlert && <AlertBanner onClose={() => setShowAlert(false)} />}
+
       {/* Card: PROMEDIO */}
       <Card className="min-w-[230px] w-auto flex-shrink-0 h-28 flex flex-col justify-start pt-4 items-center text-red-600 bg-custom-colortwo border-none">
         <h3 className="text-xl text-white">PROMEDIO</h3>
@@ -68,16 +125,8 @@ function HeaderStats() {
   );
 }
 
-/* ──────────────────────────────── Página ───────────────────────────────── */
-/**
- * NexdayPage
- * Envuelve toda la UI con `WebSocketDataProvider` y gestiona el `range`
- * compartido para el panel de gráficos.
- */
-export default function NexdayPage() {
-  // Rango temporal compartido para los gráficos (1D, 5D, 1M, 6M, 1A)
+export default function nextdayPage() {
   const [range, setRange] = useState("1D");
-
   return (
     <WebSocketDataProvider>
       <div className="bg-backgroundtwo">
@@ -105,10 +154,8 @@ export default function NexdayPage() {
         {/* ───────────── Fila inferior: panel de gráficos + noticias ───────────── */}
         <div className="w-full mx-auto px-1 lg:px-6 pb-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Panel de gráficos (2/3 del ancho en ≥lg) */}
             <section className="lg:col-span-2">
               <div className="rounded-xl border border-slate-700 bg-[#0d0f16]">
-                {/* Provider DEDICADO a los gráficos, derivando 1007 → 1001..1004 */}
                 <WebSocketDataGraficosProvider range={range}>
                   <PrincesPanel
                     height={520}
@@ -119,17 +166,13 @@ export default function NexdayPage() {
               </div>
             </section>
 
-            {/* Columna de noticias (1/3 del ancho en ≥lg) */}
-            <aside className="lg:col-span-1">
-              <div className="rounded-xl border border-slate-700 bg-[#0d0f16]">
-                <NewsPage height={520} />
-              </div>
+            <aside className="lg:col-span-1 h-full">
+              <NewsNextySpot />
             </aside>
           </div>
         </div>
       </div>
 
-      {/* Footer global */}
       <Footer />
     </WebSocketDataProvider>
   );

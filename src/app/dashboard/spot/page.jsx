@@ -3,7 +3,7 @@
  * -- Juan Jose Peña Quiñonez
  * -- CC: 1000273604
  */
-'use client';
+"use client";
 
 /**
  * Página "Spot" del dashboard.
@@ -53,12 +53,21 @@
  *  - WebSocketDataGraficosProvider
  */
 
-import Footer from '../../components/Footer'
+import Footer from "../../components/Footer";
 import PrincesPanel from "../../components/PrincesPanel";
-import { SectionCards, SectionCardsRight } from "../../components/section-cards";
-import NewsPage from "../../components/NewsPage";
-import { Card } from "../../../components/ui/card";
+import {
+  SectionCards,
+  SectionCardsRight,
+} from "../../components/section-cards-NextSpot";
+import NewsNextySpot from "../../components/NewsNextySpot";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "../../../components/ui/card";
 import DollarChart from "../../components/DollarChart";
+import AlertBanner from "../../components/AlertBanner"; // ← Importa el componente
 
 import {
   WebSocketDataProvider,
@@ -74,19 +83,20 @@ import { useState } from "react";
  *  - Muestra  2 Métricas principales:
  *    * CIERRE (close)
  *    * PROMEDIO (avg)
- * 
- * Si no hay datos todavía, muestra "-". 
+ *
+ * Si no hay datos todavía, muestra "-".
  */
 
 function HeaderStats() {
   const { dataById } = useWebSocketData();
+  const [showAlert, setShowAlert] = useState(true);
 
   /**
    *Estructura esperada para dataById["1007"]:
    * {
    *  close?: number, // último precio/cierre o tick actual
    *  avg?: number,  // promedio del periodo actual (definición depende del backend)
-   * } 
+   * }
    */
 
   const promedio = dataById["1007"]; // tick en vivo: se espera { close, avg }
@@ -101,6 +111,9 @@ function HeaderStats() {
         </h1>
       </Card>
 
+      {/* Alert Banner - Agregado aquí */}
+      {showAlert && <AlertBanner onClose={() => setShowAlert(false)} />}
+
       {/* Card: PROMEDIO */}
       <Card className="min-w-[230px] w-auto flex-shrink-0 h-28 flex flex-col justify-start pt-4 items-center text-red-600 bg-custom-colortwo border-none">
         <h3 className="text-xl text-white">PROMEDIO</h3>
@@ -111,19 +124,10 @@ function HeaderStats() {
     </div>
   );
 }
-/**
- * spotPage
- *  - Página principal del dashboard Spot.
- *  - Maneja el estado `range` (1D|5D|1M|6M|1A) para el panel de gráficos.
- *  - Envuelve el contenido con WebSocketDataProvider (proveedor global de datos).
- *  - Sección superior: tarjetas informativas + métricas en vivo + gráfico central.
- *  - Sección inferior: panel de gráficos (con provider dedicado) + noticias.
- */
 
 export default function spotPage() {
-/** Rango temporal para el panel de gráficos. */
   const [range, setRange] = useState("1D");
- return (
+  return (
     <WebSocketDataProvider>
       <div className="bg-backgroundtwo">
         {/* ───────────── Fila superior: cards izq + chart centro + cards der ───────────── */}
@@ -137,7 +141,6 @@ export default function spotPage() {
           <div className="xl:col-span-4 xl:col-start-3 lg:col-span-2 lg:col-start-2 top-8">
             <HeaderStats />
             <div className="lg:row-span-4">
-              {/* Gráfico principal (fuera del provider de gráficos derivados) */}
               <DollarChart />
             </div>
           </div>
@@ -151,36 +154,25 @@ export default function spotPage() {
         {/* ───────────── Fila inferior: panel de gráficos + noticias ───────────── */}
         <div className="w-full mx-auto px-1 lg:px-6 pb-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Panel de gráficos (2/3 del ancho en ≥lg) */}
             <section className="lg:col-span-2">
               <div className="rounded-xl border border-slate-700 bg-[#0d0f16]">
-                {/* 
-                  Provider DEDICADO a los gráficos:
-                    - Consume el tick 1007 y/o carga HTTP para construir bloques para:
-                        1001 (línea), 1002(promedios), 1003(velas), 1004(bollinger).
-                    - El prop `range` define qué periodo se visualiza/carga.
-                */}
                 <WebSocketDataGraficosProvider range={range}>
                   <PrincesPanel
                     height={520}
                     range={range}
-                    onRangeChange={setRange} // Cambia el rango desde tabs/controles del panel
+                    onRangeChange={setRange}
                   />
                 </WebSocketDataGraficosProvider>
               </div>
             </section>
 
-            {/* Columna de noticias (1/3 del ancho en ≥lg) */}
-            <aside className="lg:col-span-1">
-              <div className="rounded-xl border border-slate-700 bg-[#0d0f16]">
-                <NewsPage height={520} />
-              </div>
+            <aside className="lg:col-span-1 h-full">
+              <NewsNextySpot />
             </aside>
           </div>
         </div>
       </div>
 
-      {/* Footer global */}
       <Footer />
     </WebSocketDataProvider>
   );

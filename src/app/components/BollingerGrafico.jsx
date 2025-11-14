@@ -2,12 +2,47 @@
  * app/components/BollingerGrafico.jsx
  * -- Juan Jose Peña Quiñonez
  * -- CC: 1000273604
+ * 
+ * Descripción:
+ * Componente cliente que renderiza un gráfico de líneas usando lightweight-charts
+ * para visualizar Precio, SMA 20 y Bandas de Bollinger (superior e inferior).
+ * 
+ * Características:
+ * - Recibe datos desde un proveedor WebSocket mediante `useWebSocketDataGrafico`.
+ * - Convierte etiquetas (labels) a timestamps Unix considerando zona horaria de Bogotá.
+ * - Ordena y deduplica por timestamp para cumplir con lightweight-charts.
+ * - Tooltip interactivo sincronizado con crosshair.
+ * - Comportamiento responsive mediante ResizeObserver.
+ * 
+ * Dependencias:
+ * - react (useEffect, useRef)
+ * - lightweight-charts
+ * - useWebSocketDataGrafico (servicio propio)
+ *
+ * Uso:
+ *  <BollingerGrafico range="1D" height={360} />
+ * 
+ * Contrato de datos esperado (ejemplo):
+ * {
+ *   labels: ["09:30", "09:31", "09:32", ...] | ["2024-01-01T09:30:00Z", ...] | [unixSeconds, ...],
+ *   datasets: [
+ *     { label: "Price", data: [123.1, 123.5, ...] },       // index 0
+ *     { label: "SMA 20", data: [122.9, 123.2, ...] },      // index 1
+ *     { label: "Upper", data: [125.0, 125.4, ...] },       // index 2
+ *     { label: "Lower", data: [120.5, 120.9, ...] }        // index 3
+ *   ]
+ * }
  */
 "use client";
 
 import { useEffect, useRef } from "react";
 import { createChart, LineSeries, CrosshairMode } from "lightweight-charts";
 import { useWebSocketDataGrafico } from "../services/WebSocketDataProviderGraficos";
+
+/**
+ * Paleta y estilos del gráfico.
+ * @constant
+ */
 
 const THEME = {
   bg: "transparent",
@@ -20,9 +55,26 @@ const THEME = {
   lowerBand: "rgba(59, 130, 246, 0.6)",
 };
 
+/**
+ * Opciones comunes que se aplican a todas las series de línea.
+ * @constant
+ */
+
 const COMMON_SERIES_OPTS = { lastValueVisible: false, priceLineVisible: false };
 
-// Función para ordenar y eliminar datos duplicados por timestamp
+/**
+ * Ordena por timestamp ascendente y elimina duplicados por `time`.
+ *
+ * Complejidad:
+ *  - Ordenamiento: O(n log n)
+ *  - Dedupe con Set: O(n)
+ *
+ * @param {Array<{time:number,value:number}>} data - Serie en formato lightweight-charts
+ * @returns {Array<{time:number,value:number}>} Nueva serie ordenada y sin duplicados
+ * @example
+ * sortAndDeduplicateData([{time:2,value:5},{time:1,value:3},{time:2,value:6}])
+ * // -> [{time:1,value:3},{time:2,value:5}]
+ */
 const sortAndDeduplicateData = (data) => {
   if (!Array.isArray(data) || data.length === 0) return [];
   
@@ -46,7 +98,13 @@ const sortAndDeduplicateData = (data) => {
   return uniqueData;
 };
 
-// Función para diagnosticar problemas de orden en los datos
+  /**
+ * Diagnostica el orden y duplicados de una serie por consola.
+ * No modifica la entrada; sirve para depuración.
+ *
+ * @param {Array<{time:number,value:number}>} data
+ * @param {string} [seriesName="unknown"]
+ */
 const diagnoseDataOrder = (data, seriesName = "unknown") => {
   if (!Array.isArray(data)) {
     console.warn(`❌ [DIAGNOSE_${seriesName}] Datos no son un array`);
@@ -72,7 +130,12 @@ const diagnoseDataOrder = (data, seriesName = "unknown") => {
   }
 };
 
-// Función para convertir HH:mm a timestamp de hoy en Bogotá
+/**
+ * Convierte una hora local HH:mm a timestamp Unix (segundos) de la fecha actual en zona "America/Bogota".
+ *
+ * @param {string} hhmm - Hora en formato "HH:mm"
+ * @returns {number|null} Timestamp Unix en segundos o null si inválido
+ */
 const hhmmToUnixTodayBogota = (hhmm) => {
   try {
     const [hh, mm] = String(hhmm).split(":").map(Number);
@@ -99,7 +162,13 @@ const hhmmToUnixTodayBogota = (hhmm) => {
   }
 };
 
-// Función para convertir labels a timestamps
+/**
+ * Convierte labels heterogéneos (HH:mm, ISO date string, unix seconds) a timestamps Unix (segundos).
+ * Si no puede convertir, aplica fallback al timestamp "ahora".
+ *
+ * @param {Array<string|number>} labels
+ * @returns {number[]} Arreglo de timestamps en segundos
+ */
 const convertLabelsToTimestamps = (labels) => {
   return labels.map(label => {
     // Si ya es un timestamp numérico, usarlo directamente
@@ -127,11 +196,29 @@ const convertLabelsToTimestamps = (labels) => {
   });
 };
 
+/**
+ * Componente de gráfico de Bollinger con lightweight-charts.
+ *
+ * @param {Object} props
+ * @param {"1D"|"1W"|"1M"|string} [props.range="1D"] - Rango de datos a solicitar al WebSocket.
+ * @param {number} [props.height=360] - Alto en píxeles del canvas del gráfico.
+ * @param {number|null} [props.maxPoints=null] - Límite máximo de puntos (no aplicado en esta versión).
+ *
+ * @returns {JSX.Element}
+ *
+ * @example
+ * // En un componente cliente
+ * <BollingerGrafico range="1D" height={320} />
+ */
+
 export default function BollingerGrafico({
   range = "1D",
   height = 360,
   maxPoints = null,
 }) {
+/** @type {import('react').MutableRefObject<HTMLDivElement|null>} */
+
+  // Refs de chart y series para mutaciones controladas
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const priceRef = useRef(null);
@@ -140,10 +227,11 @@ export default function BollingerGrafico({
   const lowerRef = useRef(null);
   const tipRef = useRef(null);
 
+  // Datos desde proveedor WebSocket
   const context = useWebSocketDataGrafico();
   const { useChartPayload } = context || {};
   const bollingerData = useChartPayload ? useChartPayload(1004, range) : null;
-
+  // Montaje: inicializa chart, series y tooltip  
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -183,7 +271,7 @@ export default function BollingerGrafico({
         ? (opts) => chart.addLineSeries(opts)
         : (opts) => chart.addSeries(LineSeries, opts);
 
-    // Crear series en el orden correcto
+    // Series en orden: precio, SMA20, upper, lower
     const price = addLine({
       color: THEME.price,
       lineWidth: 2,
@@ -207,7 +295,7 @@ export default function BollingerGrafico({
       ...COMMON_SERIES_OPTS,
     });
 
-    // Tooltip
+    // Tooltip HTML flotante
     const tip = document.createElement("div");
     Object.assign(tip.style, {
       position: "absolute",
@@ -270,21 +358,21 @@ export default function BollingerGrafico({
     };
     chart.subscribeCrosshairMove(onMove);
 
-    // Responsividad
+  // Responsive: ancho dinámico + fit al contenido
     const ro = new ResizeObserver(() => {
       chart.applyOptions({ width: el.clientWidth || 640 });
       chart.timeScale().fitContent();
     });
     ro.observe(el);
 
-    // Guardar referencias
+  // Guardar refs
     chartRef.current = chart;
     priceRef.current = price;
     sma20Ref.current = sma20;
     upperRef.current = upper;
     lowerRef.current = lower;
     tipRef.current = tip;
-
+   // Cleanup
     return () => {
       ro.disconnect();
       chart.unsubscribeCrosshairMove(onMove);
@@ -300,12 +388,12 @@ export default function BollingerGrafico({
           null;
     };
   }, []);
-
+// Altura dinámica
   useEffect(() => {
     if (chartRef.current) chartRef.current.applyOptions({ height });
   }, [height]);
 
-// EFECTO PRINCIPAL CORREGIDO - Procesamiento de datos
+// Efecto principal: procesar y pintar datos de Bollinger
 useEffect(() => {
   if (!chartRef.current || !bollingerData) return;
 
@@ -318,7 +406,7 @@ useEffect(() => {
     return;
   }
 
-  // EXTRAER DATOS EN EL ORDEN CORRECTO según la nueva estructura
+// Orden esperado: [price, sma20, upper, lower]
   const priceData = datasets[0]?.data || [];
   const smaData = datasets[1]?.data || [];
   const upperData = datasets[2]?.data || [];
@@ -332,11 +420,11 @@ useEffect(() => {
     labels: labels.length
   });
 
-  // CORRECCIÓN: Convertir labels a timestamps
+// 1) Labels -> timestamps (unix seconds)
   const timestampLabels = convertLabelsToTimestamps(labels);
   console.log("🕒 [BOLLINGER] Labels convertidos a timestamps:", timestampLabels.slice(0, 5));
 
-  // Convertir a formato de series CON TIMESTAMPS
+// 2) Armar series {time,value} y filtrar nulos/ceros
   const priceSeries = timestampLabels
     .map((timestamp, index) => ({
       time: timestamp,
@@ -372,7 +460,7 @@ useEffect(() => {
     inferior: lowerSeries.length
   });
 
-  // VERIFICAR ORDEN Y DUPLICADOS
+ // 3) Chequeos de orden y duplicados (solo logging)
   console.log("🔍 [BOLLINGER] Verificando orden de datos...");
   
   // Verificar si hay timestamps duplicados en priceSeries
@@ -393,22 +481,22 @@ useEffect(() => {
   }
 
   try {
-    // Limpiar datos existentes
+  // Limpiar para evitar mezclas de datasets
     priceRef.current.setData([]);
     sma20Ref.current.setData([]);
     upperRef.current.setData([]);
     lowerRef.current.setData([]);
 
-    // APLICAR ORDENAMIENTO Y ELIMINAR DUPLICADOS
+  // 4) Orden real + dedupe duro (requerido por lightweight-charts)
     const sortedPriceSeries = sortAndDeduplicateData(priceSeries);
     const sortedSmaSeries = sortAndDeduplicateData(smaSeries);
     const sortedUpperSeries = sortAndDeduplicateData(upperSeries);
     const sortedLowerSeries = sortAndDeduplicateData(lowerSeries);
 
-    // Diagnóstico de datos
+  // Diagnóstico complementario
     diagnoseDataOrder(sortedPriceSeries, "PRICE");
 
-    // Establecer nuevos datos SOLO si hay datos válidos
+  // 5) Pintar si hay datos válidos
     if (sortedPriceSeries.length > 0) {
       priceRef.current.setData(sortedPriceSeries);
       console.log(`✅ [BOLLINGER] ${sortedPriceSeries.length} puntos de precio establecidos`);
@@ -428,7 +516,7 @@ useEffect(() => {
       lowerRef.current.setData(sortedLowerSeries);
     }
 
-    // Ajustar la escala de tiempo solo si hay datos
+  // 6) Ajustar escala solo si hay datos
     if (sortedPriceSeries.length > 0) {
       chartRef.current.timeScale().fitContent();
       console.log("✅ [BOLLINGER] Gráfico actualizado correctamente");
@@ -438,7 +526,7 @@ useEffect(() => {
   } catch (error) {
     console.error("💥 [BOLLINGER] Error actualizando gráfico:", error);
     
-    // Diagnóstico adicional del error
+  // Pistas si lightweight-charts arroja error de no-ascendente
     if (error.message.includes("asc ordered")) {
       console.error("🔍 [BOLLINGER_DIAGNOSTIC] Diagnóstico de datos problemáticos:");
       priceSeries.forEach((point, index) => {

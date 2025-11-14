@@ -1,7 +1,8 @@
+//src/app/page
 "use client";
 
 import NavBar from "./components/NavBar";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { SectionCards, SectionCardsRight } from "./components/section-cards";
 import InfoPage from "./components/InfoPage";
@@ -9,12 +10,14 @@ import FooterPage from "./components/Footer";
 import { useWebSocketData } from "./services/WebSocketDataProvider";
 import DollarChart from "./components/DollarChart";
 import { CarrouselEmpresas, CarrouselIndices } from "./components/Carrousel";
+import AlertBanner from "./components/AlertBanner";
 
 const LandingPage = () => {
   const { dataById } = useWebSocketData();
   const promedio = dataById["1007"];
+  const [showAlert, setShowAlert] = useState(true);
 
-  return (
+   return (
     <>
       <NavBar />
       <CarrouselEmpresas />
@@ -33,6 +36,8 @@ const LandingPage = () => {
                 </h1>
               </Card>
 
+              {showAlert && <AlertBanner onClose={() => setShowAlert(false)} />}
+
               <Card className="min-w-[400px] w-auto flex-shrink-0 h-28 flex flex-col justify-start pt-4 items-center text-red-600 bg-custom-colortwo border-none">
                 <h3 className="text-xl text-white">PROMEDIO</h3>
                 <h1 className="text-5xl font-bold mt-0 leading-1">
@@ -40,7 +45,6 @@ const LandingPage = () => {
                 </h1>
               </Card>
             </div>
-
             <div>
               <DollarChart />
             </div>

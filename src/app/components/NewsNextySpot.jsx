@@ -1,4 +1,4 @@
-//src/app/components/NewsPage.jsx
+//src/app/components/NewsNextySpot.jsx
 "use client";
 
 import { useMemo, useState } from "react";
@@ -6,9 +6,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useInfoData } from "../services/InfoDataProvider";
 import Link from "next/link";
 
-const PAGE_SIZE = 3;
+const PAGE_SIZE = 2; // Cambiado de 3 a 2
 
-export default function NewsPage() {
+export default function NewsNextySpot() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const { noticias = [] } = useInfoData();
 
@@ -38,7 +38,8 @@ export default function NewsPage() {
       {/* Área de contenido principal */}
       <div className="flex-1 min-h-0 p-3">
         <div className="relative h-full">
-          <div className="grid grid-cols-3 gap-3 h-full">
+          {/* Cambiado de grid-cols-3 a grid-cols-2 */}
+          <div className="grid grid-cols-2 gap-3 h-full">
             {gruposNoticias[currentSlide]?.map((n, index) => (
               <div
                 key={index}
@@ -74,7 +75,7 @@ export default function NewsPage() {
           {/* Controles */}
           <button
             onClick={prevSlide}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-green-400 p-1.5 rounded-r hover:bg-gray-700"
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-gray-800 p-1.5 rounded-r hover:bg-gray-700"
             aria-label="Anterior"
           >
             <ChevronLeft className="h-3.5 w-3.5 text-gray-300" />

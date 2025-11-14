@@ -6,13 +6,6 @@ import { useInfoData } from "@/app/services/InfoDataProvider";
 
 const Marquee = dynamic(() => import("react-fast-marquee"), { ssr: false });
 
-function parseEsNumber(value) {
-  if (value === null || value === undefined) return NaN;
-  const s = String(value).trim().replace(/\./g, "").replace(",", ".");
-  const n = Number(s);
-  return Number.isFinite(n) ? n : NaN;
-}
-
 function formatEsNumber(
   n,
   opts = { minimumFractionDigits: 2, maximumFractionDigits: 2 }
@@ -20,6 +13,13 @@ function formatEsNumber(
   if (n === null || n === undefined || Number.isNaN(Number(n)))
     return String(n ?? "");
   return Number(n).toLocaleString("es-CO", opts);
+}
+
+function parseEsNumber(str) {
+  if (typeof str !== "string") return Number(str);
+  // Remove percentage signs and other non-numeric characters except dots and commas
+  const cleaned = str.replace(/[^\d,-.]/g, '').replace(',', '.');
+  return Number(cleaned);
 }
 
 function normalizeRow(row) {
@@ -81,6 +81,10 @@ function normalizeRow(row) {
   return { label, price, change: changeDisplay, trend, unit, url };
 }
 
+function defaultFormatter(row) {
+  return normalizeRow(row);
+}
+
 function TickerChip({ item }) {
   const { label, price, change, trend, unit, url } = item || {};
   const up = trend === "up";
@@ -101,8 +105,8 @@ function TickerChip({ item }) {
         {price}
         {unit}
       </span>
-      {/*Varacion*/}
-      <span className="{`tabular-nums ${changeColor} flex items-center gap-1`}">
+      {/*Variación*/}
+      <span className={`tabular-nums ${changeColor} flex items-center gap-1`}>
         {up && <span aria-hidden="true">▲</span>}
         {down && <span aria-hidden="true">▼</span>}
         <span>{change}</span>
@@ -112,7 +116,7 @@ function TickerChip({ item }) {
 
   return url ? (
     <a
-      href="{url}"
+      href={url}
       target="_blank"
       rel="noopener noreferrer"
       className="hover:underline"
@@ -124,14 +128,29 @@ function TickerChip({ item }) {
   );
 }
 
-function CarrouselBase({ data = [], speed, className = "" }) {
-  const items = useMemo(
-    () =>
-      (Array.isArray(data) ? data : Object.values(data || {}))
-        .map(normalizeRow)
-        .filter(Boolean),
-    [data]
+function Skeleton() {
+  return (
+    <div className="h-10 flex items-center px-4 text-sm text-white/60 border-white/10 bg-custom-colortwo">
+      Cargando…
+    </div>
   );
+}
+
+export default function Carrousel({ speed, formatter, className = "" }) {
+  const { empresas = [], indices = [] } = useInfoData();
+  
+  const toArray = (x) => (Array.isArray(x) ? x : x ? Object.values(x) : []);
+  
+  const raw = useMemo(
+    () => [...toArray(empresas), ...toArray(indices)].filter(Boolean),
+    [empresas, indices]
+  );
+
+  const items = useMemo(() => {
+    return raw
+      .map((r) => (formatter ? formatter(r) : defaultFormatter(r)))
+      .filter(Boolean);
+  }, [raw, formatter]);
 
   const autoSpeed = useMemo(() => {
     if (speed) return speed;
@@ -142,19 +161,16 @@ function CarrouselBase({ data = [], speed, className = "" }) {
   if (!items.length) return <Skeleton />;
 
   return (
-    <div
-      className={`w-full border-y border-white/10 bg-custom-colortwo ${className}`}
-    >
+    <div className={`w-full border-y border-white/10 bg-custom-colortwo ${className}`}>
       <Marquee
         pauseOnHover
         gradient={false}
         speed={autoSpeed}
         loop={0}
-        autoFill
-        className="py-1"
+        className="py-0.5"
       >
         {items.map((it, i) => (
-          <TickerChip key={`${it.label}-${i}`} item={it} />
+          <TickerChip key={`${it?.label ?? "item"}-${i}`} item={it} />
         ))}
       </Marquee>
     </div>
@@ -163,18 +179,10 @@ function CarrouselBase({ data = [], speed, className = "" }) {
 
 export function CarrouselEmpresas(props) {
   const { empresas = [] } = useInfoData();
-  return <CarrouselBase data={empresas}{...props}/>;
+  return <Carrousel data={empresas} {...props}/>;
 }
 
 export function CarrouselIndices(props) {
   const { indices = [] } = useInfoData();
-  return <CarrouselBase data={indices} {...props}/>;
-}
-
-function Skeleton() {
-  return (
-    <div className="h-10 flex items-center px-4 text-sm text-white/60 border-white/10 bg-custom-colortwo">
-      Cargando…
-    </div>
-  );
+  return <Carrousel data={indices} {...props}/>;
 }
