@@ -6,18 +6,10 @@
   <component name="ChangeListManager">
     <list default="true" id="93d0032d-df24-463a-b008-f7272774ac0f" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/components/InfoPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/components/InfoPage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/components/Login-form.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/components/Login-form.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/components/NewsNextySpot.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/components/NewsNextySpot.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/components/DollarChart.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/components/DollarChart.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/app/components/NewsPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/components/NewsPage.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/app/components/Sidebar.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/components/Sidebar.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/components/section-cards-NextSpot.jsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/dashboard/layout.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/dashboard/layout.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/dashboard/nextday/page.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/dashboard/nextday/page.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/dashboard/spot/page.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/dashboard/spot/page.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/layout.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/layout.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/page.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/page.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/services/MarketFilterService.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/services/MarketFilterService.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/app/epayco/EpaycoButton.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/epayco/EpaycoButton.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/app/services/WebSocketDataProvider.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/services/WebSocketDataProvider.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/app/services/socketService.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/services/socketService.jsx" afterDir="false" />
     </list>
@@ -36,6 +28,7 @@
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="UPDATE_TYPE" value="REBASE" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
   &quot;lastFilter&quot;: {
@@ -108,7 +101,7 @@
       <workItem from="1762783411270" duration="22361000" />
       <workItem from="1762957698972" duration="17362000" />
       <workItem from="1763129336276" duration="1671000" />
-      <workItem from="1763134241431" duration="37008000" />
+      <workItem from="1763134241431" duration="41821000" />
     </task>
     <servers />
   </component>
