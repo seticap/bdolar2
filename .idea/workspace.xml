@@ -6,12 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="93d0032d-df24-463a-b008-f7272774ac0f" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/components/DollarChart.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/components/DollarChart.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/components/NewsPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/components/NewsPage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/components/Sidebar.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/components/Sidebar.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/epayco/EpaycoButton.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/epayco/EpaycoButton.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/services/WebSocketDataProvider.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/services/WebSocketDataProvider.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/app/services/socketService.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/app/services/socketService.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -101,7 +95,7 @@
       <workItem from="1762783411270" duration="22361000" />
       <workItem from="1762957698972" duration="17362000" />
       <workItem from="1763129336276" duration="1671000" />
-      <workItem from="1763134241431" duration="41821000" />
+      <workItem from="1763134241431" duration="42660000" />
     </task>
     <servers />
   </component>
