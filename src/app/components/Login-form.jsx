@@ -55,6 +55,7 @@ export function LoginForm({ className, ...props }) {
                 </div>
                 <Input id="password" type="password" required />
               </div>
+                <a href="/dashboard/spot">TEST</a>
               <div className="col-span-2 flex justify-center pt-4">
                 <Button type="submit" className=" w-40 bg-blue-900">
                   <Link href="/">Iniciar Sesión</Link>

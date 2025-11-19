@@ -78,7 +78,7 @@ export default function Sidebar({ onCollapseChange }) {
         )}
 
         <nav className="space-y-2.5">
-          <Link
+          <a
             href="../spot"
             className={`
               flex items-center hover:text-red-500 transition-colors
@@ -89,9 +89,9 @@ export default function Sidebar({ onCollapseChange }) {
             {!collapsed && (
               <span className="text-[14px] leading-snug">Spot USD/COP</span>
             )}
-          </Link>
+          </a>
 
-          <Link
+          <a
             href="../nextday"
             className={`
               flex items-center hover:text-red-500 transition-colors
@@ -104,9 +104,9 @@ export default function Sidebar({ onCollapseChange }) {
                 Next day USD/COP
               </span>
             )}
-          </Link>
+          </a>
 
-          <Link
+          <a
             href="../estadistica"
             className={`
               flex items-center hover:text-red-500 transition-colors
@@ -117,7 +117,7 @@ export default function Sidebar({ onCollapseChange }) {
             {!collapsed && (
               <span className="text-[14px] leading-snug">Estadísticas</span>
             )}
-          </Link>
+          </a>
         </nav>
       </div>
     </aside>

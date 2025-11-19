@@ -1,179 +1,100 @@
-/**
- * src/app/dashboard/spot.jsx
- * -- Juan Jose Peña Quiñonez
- * -- CC: 1000273604
- */
 "use client";
-
-/**
- * Página "Spot" del dashboard.
- *
- * Objetivo:
- *  - Mostrar un overview del mercado USD/COP en tiempo real.
- *  - Integrar métricas live (cierre/promedio), gráfico principal y panel de gráficos derivados.
- *  - Incluir tarjetas informativas y feed de noticias.
- *
- * Estructura general:
- *  <WebSocketDataProvider>           ← proveedor global: expone dataById y request WS
- *    └─ Wrapper de la página
- *       ├─ Fila superior (grid):
- *       │   ├─ Izquierda: <SectionCards />               (tarjetas informativas)
- *       │   ├─ Centro:    <HeaderStats /> + <DollarChart /> (métricas live + gráfico principal)
- *       │   └─ Derecha:   <SectionCardsRight />          (tarjetas adicionales)
- *       ├─ Fila inferior (grid):
- *       │   ├─ Panel de gráficos (2/3):
- *       │   │   └─ <WebSocketDataGraficosProvider range={range}>
- *       │   │       └─ <PrincesPanel range onRangeChange /> (línea, velas, promedios, bollinger)
- *       │   └─ Columna de noticias (1/3): <NewsPage />
- *       └─ <Footer />
- *
- * Providers:
- *  - WebSocketDataProvider:
- *      Provee useWebSocketData() para acceder a dataById (mapa por id de canal).
- *      En particular, el id 1007 emite ticks en tiempo real con valores { close, avg }.
- *
- *  - WebSocketDataGraficosProvider (anidado solo para el panel de gráficos):
- *      Deriva datos del id 1007 y realiza cargas HTTP/caché para producir bloques consumibles
- *      por los gráficos (ids lógicos 1001..1004). Recibe `range` (1D/5D/1M/6M/1A)
- *      para gestionar qué conjunto cargar/mostrar.
- *
- * Estado local:
- *  - range: controla el rango temporal del panel de gráficos (1D por defecto).
- *
- * Responsividad (Tailwind):
- *  - Fila superior usa grid con:
- *      - base: 1 columna
- *      - lg:   4 columnas
- *      - xl:   8 columnas
- *    Para posicionar izquierda/centro/derecha con spans y starts distintos por breakpoint.
- *
- * Dependencias visibles:
- *  - Footer, PrincesPanel, SectionCards, SectionCardsRight, NewsPage, Card, DollarChart
- *  - WebSocketDataProvider, useWebSocketData
- *  - WebSocketDataGraficosProvider
- */
 
 import Footer from "../../components/Footer";
 import PrincesPanel from "../../components/PrincesPanel";
-import {
-  SectionCards,
-  SectionCardsRight,
-} from "../../components/section-cards-NextSpot";
+import {SectionCards, SectionCardsRight,} from "../../components/section-cards"
 import NewsNextySpot from "../../components/NewsNextySpot";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "../../../components/ui/card";
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import DollarChart from "../../components/DollarChart";
-import AlertBanner from "../../components/AlertBanner"; // ← Importa el componente
+import AlertBanner from "../../components/AlertBanner";
 
-import {
-  WebSocketDataProvider,
-  useWebSocketData,
-} from "../../services/WebSocketDataProvider";
-
+import { useWebSocketData } from "../../services/WebSocketDataProvider";
 import { WebSocketDataGraficosProvider } from "../../services/WebSocketDataProviderGraficos";
-import { useState } from "react";
+import { useChannel } from "@/app/services/ChannelService";
+import { useMarketFilter } from "@/app/services/MarketFilterService";
 
-/**
- * HeaderStats
- *  - Lee datos en vivo del canal WS id = 1007 mediante useWebSicketData().
- *  - Muestra  2 Métricas principales:
- *    * CIERRE (close)
- *    * PROMEDIO (avg)
- *
- * Si no hay datos todavía, muestra "-".
- */
+import React, {useEffect, useState} from "react";
 
-function HeaderStats() {
-  const { dataById } = useWebSocketData();
-  const [showAlert, setShowAlert] = useState(true);
+export default function nextdayPage() {
+    const { dataById } = useWebSocketData();
+    const promedio = dataById["1007"];
+    const [showAlert, setShowAlert] = useState(true);
+    const { setChannel } = useChannel();
+    const { setMarket } = useMarketFilter();
+    const [range, setRange] = useState("1D");
 
-  /**
-   *Estructura esperada para dataById["1007"]:
-   * {
-   *  close?: number, // último precio/cierre o tick actual
-   *  avg?: number,  // promedio del periodo actual (definición depende del backend)
-   * }
-   */
+    useEffect(() => {
+        setChannel("dolar");
+        setMarket(71);
+    }, []);
 
-  const promedio = dataById["1007"]; // tick en vivo: se espera { close, avg }
 
-  return (
-    <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-16 px-1">
-      {/* Card: CIERRE */}
-      <Card className="min-w-[230px] w-auto flex-shrink-0 h-28 flex flex-col justify-start pt-4 items-center text-green-600 bg-custom-colortwo border-none">
-        <h3 className="text-xl text-white">CIERRE</h3>
-        <h1 className="text-5xl font-bold mt-0 leading-1">
-          {promedio?.close ?? "-"}
-        </h1>
-      </Card>
+    return (
+        <div className="bg-backgroundtwo">
+            <div className="grid xl:grid-cols-6 w-full mx-auto p-1">
+                <div className="xl:col-span-1">
+                    <SectionCards />
+                </div>
 
-      {/* Alert Banner - Agregado aquí */}
-      {showAlert && <AlertBanner onClose={() => setShowAlert(false)} />}
+                <div className="xl:col-span-4 xl:col-start-2 lg:col-span-2 mx-2">
+                    <div className="flex flex-row justify-center items-center gap-4 px-1">
+                        <Card className="min-w-[400px] w-auto flex-shrink-0 h-28 flex flex-col justify-start pt-4 items-center text-green-600 bg-custom-colortwo border-none">
+                            <h3 className="text-xl text-white">CIERRE</h3>
+                            <h1 className="text-5xl font-bold mt-0 leading-1">
+                                {promedio?.close || "-"}
+                            </h1>
+                        </Card>
 
-      {/* Card: PROMEDIO */}
-      <Card className="min-w-[230px] w-auto flex-shrink-0 h-28 flex flex-col justify-start pt-4 items-center text-red-600 bg-custom-colortwo border-none">
-        <h3 className="text-xl text-white">PROMEDIO</h3>
-        <h1 className="text-5xl font-bold mt-0 leading-1">
-          {promedio?.avg ?? "-"}
-        </h1>
-      </Card>
-    </div>
-  );
-}
+                        {showAlert && <AlertBanner onClose={() => setShowAlert(false)} />}
 
-export default function spotPage() {
-  const [range, setRange] = useState("1D");
-  return (
-    <WebSocketDataProvider>
-      <div className="bg-backgroundtwo">
-        {/* ───────────── Fila superior: cards izq + chart centro + cards der ───────────── */}
-        <div className="grid grid-cols-1 xl:grid-cols-8 lg:grid-cols-4 gap-6 w-full mx-auto p-1 py-6">
-          {/* Columna izquierda: tarjetas informativas */}
-          <div className="xl:col-span-2 lg:col-span-1">
-            <SectionCards />
-          </div>
+                        <Card className="min-w-[400px] w-auto flex-shrink-0 h-28 flex flex-col justify-start pt-4 items-center text-red-600 bg-custom-colortwo border-none">
+                            <h3 className="text-xl text-white">PROMEDIO</h3>
+                            <h1 className="text-5xl font-bold mt-0 leading-1">
+                                {promedio?.avg || "-"}
+                            </h1>
+                        </Card>
+                    </div>
+                    <div>
+                        <DollarChart/>
+                    </div>
+                </div>
 
-          {/* Columna central: métricas en vivo + gráfico principal */}
-          <div className="xl:col-span-4 xl:col-start-3 lg:col-span-2 lg:col-start-2 top-8">
-            <HeaderStats />
-            <div className="lg:row-span-4">
-              <DollarChart />
+                <div className="col-span-1 xl:col-start-6">
+                    <SectionCardsRight />
+                </div>
             </div>
-          </div>
+            <div className="w-full mx-auto px-3 pb-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <section className="lg:col-span-2">
+                        <div className="rounded-xl border border-slate-700 bg-[#0d0f16]">
+                            <WebSocketDataGraficosProvider range={range}>
+                                <PrincesPanel
+                                    height={520}
+                                    range={range}
+                                    onRangeChange={setRange}
+                                />
+                            </WebSocketDataGraficosProvider>
+                        </div>
+                    </section>
+                    <aside className="lg:col-span-1 h-full">
+                        <Card className="bg-custom-colortwo text-white border-none h-full min-h-[46vh] flex flex-col">
 
-          {/* Columna derecha: tarjetas informativas adicionales */}
-          <div className="xl:col-span-2 xl:col-start-7 lg:col-span-1 lg:col-start-4">
-            <SectionCardsRight />
-          </div>
+                            <CardHeader className="bg-red-700 flex justify-between items-center mt-[-24px] h-8 sm:h-10">
+                                <CardTitle className="text-sm sm:text-xl font-semibold">
+                                    NOTICIAS ACTUALES
+                                </CardTitle>
+                                <img src="/images/larepublica.png" alt="LR" className="h-4 sm:h-6" />
+                            </CardHeader>
+
+                            <CardContent className="flex-1 overflow-y-auto scrollbar-custom">
+                                <NewsNextySpot />
+                            </CardContent>
+
+                        </Card>
+                    </aside>
+                </div>
+            </div>
+            <Footer/>
         </div>
-
-        {/* ───────────── Fila inferior: panel de gráficos + noticias ───────────── */}
-        <div className="w-full mx-auto px-1 lg:px-6 pb-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <section className="lg:col-span-2">
-              <div className="rounded-xl border border-slate-700 bg-[#0d0f16]">
-                <WebSocketDataGraficosProvider range={range}>
-                  <PrincesPanel
-                    height={520}
-                    range={range}
-                    onRangeChange={setRange}
-                  />
-                </WebSocketDataGraficosProvider>
-              </div>
-            </section>
-
-            <aside className="lg:col-span-1 h-full">
-              <NewsNextySpot />
-            </aside>
-          </div>
-        </div>
-      </div>
-
-      <Footer />
-    </WebSocketDataProvider>
-  );
+    )
 }

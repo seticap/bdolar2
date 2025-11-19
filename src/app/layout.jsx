@@ -21,25 +21,38 @@ export default function RootLayout({ children }) {
     return (
         <html lang="es" suppressHydrationWarning>
         <body className="min-h-screen flex flex-col">
+
+        {/* 👉 InfoDataProvider va FUERA del socket */}
         <InfoDataProvider>
-            {/* 👇 NUEVO: canal y market deben envolver al WebSocketDataProvider */}
+
+            {/* 👉 Channel y Market afectan SOLO al WebSocket */}
             <ChannelProvider defaultChannel="delay">
                 <MarketFilterProvider defaultMarket={71}>
+
+                    {/* 👉 WS Provider debe estar SOLO, sin otros Providers dentro */}
                     <WebSocketDataProvider>
+
+                        {/* 👉 Providers que leen el WS, NO LO ENVUELVEN */}
                         <IntradaySheetsProvider>
                             <DailySheetsAgent />
-                            <main className="flex-1 w-full text-white">{children}</main>
+
+                            <main className="flex-1 w-full text-white">
+                                {children}
+                            </main>
+                            <Script
+                                src="https://checkout.epayco.co/checkout.js"
+                                strategy="afterInteractive"
+                            />
+
                         </IntradaySheetsProvider>
+
                     </WebSocketDataProvider>
+
                 </MarketFilterProvider>
             </ChannelProvider>
+
         </InfoDataProvider>
 
-        {/* Mejor con next/script */}
-        <Script
-            src="https://checkout.epayco.co/checkout.js"
-            strategy="afterInteractive"
-        />
         </body>
         </html>
     );

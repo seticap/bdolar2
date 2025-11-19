@@ -41,7 +41,7 @@ function ChartTooltip({ visible, price, time, x, y, pointCount, firstPrice }) {
       className="custom-tooltip"
       style={{
         position: "fixed",
-        padding: "14px",
+        padding: "7px",
         background: "rgba(15, 23, 42, 0.98)",
         color: "white",
         border: "1px solid rgba(148, 163, 184, 0.3)",
@@ -60,7 +60,7 @@ function ChartTooltip({ visible, price, time, x, y, pointCount, firstPrice }) {
         top: `${adjustedY}px`,
       }}
     >
-      <div style={{ marginBottom: "10px" }}>
+      <div>
         <div
           style={{
             fontWeight: 600,
@@ -76,7 +76,7 @@ function ChartTooltip({ visible, price, time, x, y, pointCount, firstPrice }) {
         </div>
       </div>
 
-      <div style={{ marginBottom: "10px" }}>
+      <div>
         <div
           style={{
             fontSize: "13px",
@@ -99,33 +99,6 @@ function ChartTooltip({ visible, price, time, x, y, pointCount, firstPrice }) {
             maximumFractionDigits: 2,
           }) || "0.00"}
         </div>
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "6px",
-          fontSize: "13px",
-        }}
-      >
-        <span style={{ color: "rgba(255, 255, 255, 0.8)" }}>Variación:</span>
-        <span
-          style={{
-            textAlign: "right",
-            color: isPositive ? "#10b981" : "#ef4444",
-            fontWeight: 600,
-          }}
-        >
-          {isPositive ? "+" : ""}
-          {variation.toFixed(2)}%
-        </span>
-        <span style={{ color: "rgba(255, 255, 255, 0.8)" }}>Puntos:</span>
-        <span
-          style={{ textAlign: "right", color: "white", fontWeight: 500 }}
-        >
-          {pointCount}
-        </span>
       </div>
     </div>
   );
