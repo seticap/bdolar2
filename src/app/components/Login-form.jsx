@@ -52,6 +52,7 @@ export function LoginForm({ className, ...props }) {
                   >
                     Olvidaste tu contraseña?
                   </a>
+                    <a href="/dashboard/spot">Test</a>
                 </div>
                 <Input id="password" type="password" required />
               </div>

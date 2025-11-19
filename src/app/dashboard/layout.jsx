@@ -18,7 +18,6 @@ export default function dashboardLayout({ children }) {
   }, [sidebarColapsado, isMobile]);
 
   return (
-    <WebSocketDataProvider>
       <div className="flex h-screen overflow-hidden bg-gradient-to-b from-[#20202c] to-[#1a1a26]">
         {/* Sidebar colapsable */}
         <Sidebar onCollapseChange={setSidebarColapsado} />
@@ -31,16 +30,13 @@ export default function dashboardLayout({ children }) {
           <main
             className="flex-1 overflow-y-auto p-4 transition-all duration-300 ease-in-out"
             style={{
-              // Usa exclusivamente la variable CSS. Esto elimina el “hueco” izquierdo.
               paddingLeft: "var(--sidebar-w, 56px)",
-              // Quita el espacio superior: tu Navbar no es fixed/sticky
-              paddingTop: 0, // ← antes tenías pt-[60px]
+              paddingTop: 0,
             }}
           >
             {children}
           </main>
         </div>
       </div>
-    </WebSocketDataProvider>
   );
 }

@@ -61,29 +61,29 @@ export default function Sidebar({ onCollapseChange }) {
         )}
 
         <nav className="space-y-2.5">
-          <Link
+          <a
             href="../spot"
             className="flex items-center gap-2.5 hover:text-red-500 transition-colors"
           >
             <FaDollarSign size={14} /> {/* ↓ 14px */}
             {!collapsed && <span className="text-[13px] leading-none">Spot USD/COP</span>}
-          </Link>
+          </a>
 
-          <Link
+          <a
             href="../nextday"
             className="flex items-center gap-2.5 hover:text-red-500 transition-colors"
           >
             <FaCalendarAlt size={14} />
             {!collapsed && <span className="text-[13px] leading-none">Next day USD/COP</span>}
-          </Link>
+          </a>
 
-          <Link
+          <a
             href="../estadistica"
             className="flex items-center gap-2.5 hover:text-red-500 transition-colors"
           >
             <FaTable size={14} />
             {!collapsed && <span className="text-[13px] leading-none">Estadísticas</span>}
-          </Link>
+          </a>
         </nav>
       </div>
     </aside>
