@@ -2,17 +2,6 @@
  * Navbar2.jsx
  * -- Juan Jose Peña Quiñonez
  * -- Cc:1000273604
- *  Barra de navegación superior del dashboard.
- *  Alinea dinámicamente con el sidebar (colapsado o no) y muestra un menú de usuario con logout.
- * 
- *  Caracteristicas principales:
- *   - Detecta el colapso del sidebar mediante clases aplicadas al layout principal(`pl-20`, `pl-64`).
- *   - Muestra el nombre del usuario y un dropdown con acción de Logout.
- *   - Responsive: ocultamiento de texto en mobile y fallback visual.
- *  
- *  Dependencias:
- *   - `react-icons`: FaUser, FaChevronDown, FiLogOut
- *   - `next/navigation`: useRouter
  */
 
 "use client";
@@ -21,40 +10,35 @@ import { useState, useEffect } from "react";
 import { FaUser, FaChevronDown } from "react-icons/fa";
 import { FiLogOut } from "react-icons/fi";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+
+const STORAGE_KEY = "sidebar:collapsed";
 
 export default function Navbar2() {
-  // Estado del menú desplegable del usuario
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  // Estado interno que refleja si el sidebar está colapsado
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  // Hook de enrutamiento para Logout
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const router = useRouter();
 
-  /**
-   *  Efecto para observar cambios en el Layout y determinar si el sidebar está colapsado.
-   *  Utiliza `MutationObserver` para detectar la clase `pl-20` o `pl-64` en el contenedor raíz.
-   */
+  // Leer estado inicial + escuchar cambios del sidebar
   useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const root = document.querySelector("body > div");
-      if (root?.classList.contains("pl-20")) {
-        setSidebarCollapsed(true);
-      } else {
-        setSidebarCollapsed(false);
+    if (typeof window === "undefined") return;
+
+    // estado inicial desde localStorage
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY);
+      if (stored !== null) {
+        setSidebarCollapsed(stored === "1");
       }
-    });
+    } catch {}
 
-    observer.observe(document.body, {
-      attributes: true,
-      childList: true,
-      subtree: true,
-    });
+    // escuchar eventos del Sidebar
+    const handler = (e) => {
+      setSidebarCollapsed(Boolean(e.detail));
+    };
 
-    return () => observer.disconnect();
+    window.addEventListener("sidebar:collapsed", handler);
+    return () => window.removeEventListener("sidebar:collapsed", handler);
   }, []);
-  /**
-   *  Redirecciona al Login o landing al hacer Logout
-   */
 
   const handleLogout = () => {
     router.push("/");
@@ -62,12 +46,28 @@ export default function Navbar2() {
 
   return (
     <nav
-      className={`w-full h-[60px] bg-[#1b1b23] flex items-center justify-between px-4 sm:px-6 shadow-md z-40 transition-all duration-300`}
+      className={`
+        w-full h-[60px] bg-[#1b1b23]
+        flex items-center
+        px-4 sm:px-6 shadow-md z-40
+        transition-all duration-300
+      `}
     >
-      {/* Espacio fantasma para dejar hueco del sidebar*/}
-      <div className={`${sidebarCollapsed ? "w-20" : "w-64"} hidden sm:block`} />
+      {/* Ghost con el mismo ancho que el sidebar */}
+      <div className={sidebarCollapsed ? "w-14" : "w-52"} />
 
-      {/* Dropdown del usuario */}
+      {/* Logo SIEMPRE visible, justo después del sidebar */}
+      <div className="flex items-center">
+        <Image
+          src="/logoSet.png"   // asegúrate que esté en /public/logoSet.png
+          alt="SET ICAP"
+          width={120}
+          height={40}
+          priority
+        />
+      </div>
+
+      {/* Usuario a la derecha */}
       <div className="ml-auto relative">
         <div
           onClick={() => setDropdownOpen(!dropdownOpen)}

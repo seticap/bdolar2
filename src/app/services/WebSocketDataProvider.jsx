@@ -1,5 +1,4 @@
 "use client";
-
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { tokenServices, webSocketServices } from "./socketService";
 import { useChannel } from "./ChannelService";
@@ -9,125 +8,116 @@ const WebSocketDataContext = createContext();
 export const useWebSocketData = () => useContext(WebSocketDataContext);
 
 export const WebSocketDataProvider = ({ children }) => {
-    const [dataById, setDataById] = useState({});
-    const [dataByHour, setDataByHour] = useState({});
+  const [dataById, setDataById] = useState({});
+  const [dataByHour, setDataByHour] = useState({});
+  const { channel } = useChannel();
+  const { market } = useMarketFilter();
+  const mountedRef = useRef(false);
 
-    const { channel } = useChannel();
-    const { market } = useMarketFilter();
+  useEffect(() => {
+    let active = true;
 
-    // --- Parser ID 1000 ---
-    const parseGraph = (parsed) => {
-        const r = parsed?.result?.[0];
-        if (!r) return null;
+    const connectWebSocket = async () => {
+      try {
+        const username = "sysdev";
+        const password = "$MasterDev1972*";
+        localStorage.removeItem("auth-token");
 
-        const raw =
-            r.datos_grafico_moneda_mercado ||
-            r.datos_grafico_moneda_mercado_rt ||
-            null;
+        let token = await tokenServices.fetchToken(username, password);
+        if (!token || token.length < 30) throw new Error("Token inválido");
 
-        if (!raw) return null;
+        await webSocketServices.connect(token, channel);
 
-        const pricesMatch = raw.match(/data:\s*\[([^\]]+)\]/);
-        const arraysMatch = raw.match(/data:\s*\[([^\]]+)\]/g);
-        const labelsMatch = raw.match(/labels:\s*\[([^\]]+)\]/);
-
-        if (!pricesMatch || arraysMatch.length < 2 || !labelsMatch) return null;
-
-        const amountsMatch = arraysMatch[1];
-
-        const prices = pricesMatch[1]
-            .split(",")
-            .map(Number)
-            .filter((n) => !isNaN(n));
-
-        const amounts = amountsMatch
-            .match(/\[([^\]]+)\]/)?.[1]
-            ?.split(",")
-            .map(Number)
-            .filter((n) => !isNaN(n));
-
-        const labels = labelsMatch[1]
-            .split(",")
-            .map((x) => x.trim().replace(/["']/g, ""));
-
-        const min = Math.min(prices.length, amounts.length, labels.length);
-
-        return {
-            prices: prices.slice(0, min),
-            amounts: amounts.slice(0, min),
-            labels: labels.slice(0, min),
-        };
-    };
-
-    // --- MAIN EFFECT ---
-    useEffect(() => {
-        let active = true;
-
-        // listener único
-        const listener = (frame) => {
-            if (!active) return;
-            if (frame.ns !== channel) return;
-
-            let parsed;
-            try {
-                parsed = JSON.parse(frame.text);
-            } catch {
-                return;
-            }
-            if (!parsed?.id) return;
-
-            // filtrar por market
+        webSocketServices.addListener((raw) => {
+          if (!active) return;
+          try {
+            const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+            if (!parsed || !parsed.id) return;
             if (!matchesMarket(parsed, market)) return;
 
-            // ID 1000
             if (parsed.id === 1000) {
-                const graph = parseGraph(parsed);
-                if (graph) {
-                    setDataById((prev) => ({ ...prev, 1000: graph }));
+              const result = parsed.result?.[0] || {};
+              const dataStr =
+                result.datos_grafico_moneda_mercado ||
+                result.datos_grafico_moneda_mercado_rt ||
+                null;
+              if (dataStr) {
+                const formatted = ChartData(dataStr);
+                if (formatted) {
+                  setDataById((prev) => ({ ...prev, [parsed.id]: formatted }));
                 }
-                return;
+              }
+              return;
             }
 
-            // IDs normales
             if (parsed.data) {
-                setDataById((prev) => ({
-                    ...prev,
-                    [parsed.id]: parsed.data,
-                }));
+              setDataById((prev) => ({
+                ...prev,
+                [parsed.id]: parsed.data,
+              }));
 
-                // horario 1007
-                if (parsed.id === 1007 && parsed.data?.time) {
-                    const hour = parsed.data.time.substring(0, 2) + ":00";
-                    setDataByHour((prev) =>
-                        prev[hour] ? prev : { ...prev, [hour]: parsed.data }
-                    );
-                }
+              if (parsed.id === 1007 && parsed.data?.time) {
+                const time = parsed.data.time;
+                const hourKey = time.substring(0, 2) + ":00";
+                setDataByHour((prev) =>
+                  prev[hourKey] ? prev : { ...prev, [hourKey]: parsed.data }
+                );
+              }
             }
-        };
+          } catch (_) {
+            // Silenciar parse errors
+          }
+        });
+      } catch (_) {
+        // Silenciar conexión fallida
+      }
+    };
 
-        webSocketServices.addListener(listener);
+    connectWebSocket();
+    mountedRef.current = true;
 
-        const start = async () => {
-            const username = "sysdev";
-            const password = "$MasterDev1972*";
+    return () => {
+      active = false;
+      // webSocketServices.disconnect();
+    };
+  }, [channel, market]);
 
-            localStorage.removeItem("auth-token");
-            const token = await tokenServices.fetchToken(username, password);
+  const ChartData = (dataStr) => {
+    const pricesMatch = dataStr.match(/data:\s*\[([^\]]+)\]/);
+    const amountsMatches = dataStr.match(/data:\s*\[([^\]]+)\]/g) || [];
+    const labelsMatch = dataStr.match(/labels:\s*\[([^\]]+)\]/);
 
-            await webSocketServices.connect(token, channel);
-        };
+    if (!pricesMatch || amountsMatches.length < 2 || !labelsMatch) return null;
 
-        start();
+    const amountsMatch = amountsMatches[1];
 
-        return () => {
-            active = false;
-            webSocketServices.removeListener(listener);
-        };
-    }, [channel, market]);
+    const prices = pricesMatch[1]?.split(",").map(Number).filter((n) => !isNaN(n));
+    const amounts = amountsMatch.match(/\[([^\]]+)\]/)?.[1]?.split(",").map(Number).filter((n) => !isNaN(n));
+    const labels = labelsMatch[1]?.split(",").map((label) => label.trim().replace(/["']/g, "")).filter(Boolean);
 
-    return (
-        <WebSocketDataContext.Provider value={{ dataById, dataByHour }}>
-            {children}
-        </WebSocketDataContext.Provider>
-    );
+    const minLength = Math.min(prices.length, amounts.length, labels.length);
+    return {
+      prices: prices.slice(0, minLength),
+      amounts: amounts.slice(0, minLength),
+      labels: labels.slice(0, minLength),
+    };
+  };
+
+  const updateData = (id, payload) => {
+    if (id === 1000) return;
+    setDataById((prev) => ({ ...prev, [id]: payload }));
+    if (id === 1007 && payload.data?.time) {
+      const time = payload.data.time;
+      const hourKey = time.substring(0, 2) + ":00";
+      setDataByHour((prev) =>
+        prev[hourKey] ? prev : { ...prev, [hourKey]: payload.data }
+      );
+    }
+  };
+
+  return (
+    <WebSocketDataContext.Provider value={{ dataById, updateData, dataByHour }}>
+      {children}
+    </WebSocketDataContext.Provider>
+  );
 };

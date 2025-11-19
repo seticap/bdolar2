@@ -18,7 +18,7 @@
  *  - formData: {merc: string[], moneda: string[], plazo: string[] }
  *  - setFormData: React.Dispatch para actualizar `formData` (controlado por el padre)
  *  - tipoActivo: "IMCs" | "CLIENTES" (determina sector: 1 o 2 para la API)
- *  - handleGuardar: (data) => Promise<void> | void (accíon al confirmar)
+ *  - handleGuardar: (data) => Promise<void> | void (acción al confirmar)
  *  - cargando: boolean (deshabilita botones cuando hay una acción en progreso)
  *  - cerrar: () => void (cierra el modal)
  * 
@@ -29,6 +29,7 @@
  *  - Si se selecciona **"Todos"** en un campo, se ignoran otras selecciones en ese campo.
  *  - Si se deselecciona todo, se restablece a **"Todos"** para evitar estado vacío.
  */
+
 import React, { useEffect, useState } from "react";
 import { fetchFiltrosDesdeDatos } from "../services/estadisticasService";
 
@@ -53,7 +54,6 @@ const ModalFiltros = ({
    *  - Pide filtros a la API y los normaliza agregando "Todos" al inicio
    *  - Limpia el `formData` para asegurar que solo contenga valores válidos
    */
-
   useEffect(() => {
     let cancelado = false;
 
@@ -72,13 +72,11 @@ const ModalFiltros = ({
         !filtros.monedas.length ||
         !filtros.plazos.length
       ) {
-        console.warn("⚠️ Filtros incompletos del backend. Se omite carga.");
+        // Filtros incompletos: no se actualiza el estado
         return;
       }
 
       // Inyecta "Todos" como primera opción en cada grupo
-      console.log("🧪 Filtros recibidos:", filtros);
-
       const nuevosFiltros = {
         mercados: ["Todos", ...filtros.mercados],
         monedas: ["Todos", ...filtros.monedas],
@@ -87,7 +85,7 @@ const ModalFiltros = ({
 
       setOpciones(nuevosFiltros);
 
-      //  Limpieza de formData actual para eliminar valires no válidos
+      // Limpieza de formData actual para eliminar valores no válidos
       setFormData((prev) => ({
         merc: prev.merc.filter((m) => nuevosFiltros.mercados.includes(m)),
         moneda: prev.moneda.filter((m) => nuevosFiltros.monedas.includes(m)),
@@ -108,7 +106,6 @@ const ModalFiltros = ({
    *  - Si se selecciona otro valor, se quita "Todos" del arreglo.
    *  - Si el arreglo queda vacío, vuelve a ["Todos"]. 
    */
-
   const handleCheck = (campo, valor) => {
     setFormData((prev) => {
       let nuevos = [...prev[campo]];
@@ -126,12 +123,12 @@ const ModalFiltros = ({
       return { ...prev, [campo]: nuevos };
     });
   };
-  
+
   /**
    * Renderiza un bloque de selección para un campo dado:
-   *  - Label: Etiqueta visible ("Mercado", "Moneda", "Plazo")
-   *  - Campo: Key en formData ("Merc" | "Moneda" | "Plazo")
-   *  - Valores: opciones disponibles (Array de strings)
+   *  - label: etiqueta visible ("Mercado", "Moneda", "Plazo")
+   *  - campo: key en formData ("merc" | "moneda" | "plazo")
+   *  - valores: opciones disponibles (Array de strings)
    */
   const renderCampo = (label, campo, valores) => (
     <div>
@@ -141,6 +138,7 @@ const ModalFiltros = ({
       <small className="text-gray-400 mb-2 block">
         {formData[campo].join(", ")}
       </small>
+
       <div className="grid grid-cols-3 gap-3">
         {valores.map((op) => (
           <label
@@ -182,6 +180,7 @@ const ModalFiltros = ({
             &times;
           </button>
         </div>
+
         {/* Contenido scrollable */}
         <div className="max-h-[80vh] overflow-y-auto px-6 py-6 space-y-6">
           {renderCampo("Mercado", "merc", opciones.mercados)}

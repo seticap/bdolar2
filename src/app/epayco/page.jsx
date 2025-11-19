@@ -11,7 +11,6 @@ const PromoPage = () => {
       <div className="bg-backgroundtwo min-h-screen flex flex-col items-center py-10">
         {/* Titulo */}
         <div className="max-w-4xl mx-auto text-center py-5 px-4">
-          {/* Subtítulo */}
           <p className="text-2xl md:text-3xl font-bold text-white mb-2 mt-2">
             Tenemos un plan,
           </p>
@@ -31,6 +30,8 @@ const PromoPage = () => {
                   src="/images/companeros-trabajo-negocios-dandose-mano-reunion-oficina-foco-hombre-negocios-1-scaled.jpg"
                   alt="PlanTrimestral"
                 />
+
+                {/* Overlay inicial PLAN TRIMESTRAL */}
                 <div className="absolute inset-0 bg-card-color bg-opacity-40 flex flex-col justify-center items-center p-6 transition-opacity duration-500 group-hover:opacity-0 rounded-lg">
                   <h3 className="text-2xl sm:text-3xl font-bold text-white mb-2">
                     PLAN
@@ -40,11 +41,12 @@ const PromoPage = () => {
                   </p>
                 </div>
 
-                <div className="absolute inset-0 bg-black flex flex-col justify-center items-center p-6 opacity-0 transition-opacity duration-500 group-hover:opacity-70">
-                  <h3 className="text-xl sm:text-2xl font-bold mb-4 text-center">
+                {/* Overlay detalle (AQUÍ ESTABA EL PROBLEMA) */}
+                <div className="absolute inset-0 bg-black/70 flex flex-col justify-center items-center p-6 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
+                  <h3 className="text-xl sm:text-2xl font-bold mb-4 text-center text-white">
                     Beneficios Trimestrales
                   </h3>
-                  <ul className="text-left space-y-2 sm:space-y-3 text-sm sm:text-base">
+                  <ul className="text-left space-y-2 sm:space-y-3 text-sm sm:text-base text-white">
                     <li>✦ Informacion en tiempo real.</li>
                     <li>✦ 1 Usuario</li>
                     <li>✦ Soporte gratuito</li>
@@ -75,11 +77,11 @@ const PromoPage = () => {
                   </p>
                 </div>
 
-                <div className="absolute inset-0 bg-black flex flex-col justify-center items-center p-6 opacity-0 transition-opacity duration-500 group-hover:opacity-70">
+                <div className="absolute inset-0 bg-black/70 flex flex-col justify-center items-center p-6 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
                   <h3 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 text-amber-500 text-center">
                     Beneficios Semestral
                   </h3>
-                  <ul className="text-left space-y-2 sm:space-y-3 text-sm sm:text-base md:text-lg m-auto">
+                  <ul className="text-left space-y-2 sm:space-y-3 text-sm sm:text-base md:text-lg m-auto text-white">
                     <li>✦ Informacion en tiempo real.</li>
                     <li>✦ 1 Usuario</li>
                     <li>✦ Soporte gratuito</li>
@@ -110,11 +112,11 @@ const PromoPage = () => {
                   </p>
                 </div>
 
-                <div className="absolute inset-0 bg-black flex flex-col justify-center items-center p-6 opacity-0 transition-opacity duration-500 group-hover:opacity-70">
-                  <h3 className="text-xl sm:text-2xl font-bold mb-4 text-center">
+                <div className="absolute inset-0 bg-black/70 flex flex-col justify-center items-center p-6 opacity-0 transition-opacity duration-500 group-hover:opacity-100">
+                  <h3 className="text-xl sm:text-2xl font-bold mb-4 text-center text-white">
                     Beneficios Anuales
                   </h3>
-                  <ul className="text-left space-y-2 sm:space-y-3 text-sm sm:text-base">
+                  <ul className="text-left space-y-2 sm:space-y-3 text-sm sm:text-base text-white">
                     <li>✦ Informacion en tiempo real.</li>
                     <li>✦ 1 Usuario</li>
                     <li>✦ Soporte gratuito</li>

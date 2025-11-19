@@ -52,7 +52,6 @@ const StockdioForexWidget = () => {
     }
   }, []);
 
-  // Datos de ejemplo para desarrollo - basados en la imagen N°1
   const monedasData = [
     { symbol: "DÓLAR OBS", price: "0.9537", change: "-0.1160%" },
     { symbol: "EURO", price: "5.7042", change: "+0.0009%" },
@@ -61,7 +60,6 @@ const StockdioForexWidget = () => {
     { symbol: "LIBRA ESTERLINA", price: "20.2880", change: "-0.0059%" },
   ];
 
-  // Solo renderiza iframe si es producción
   if (isProduction) {
     return (
       <div className="w-full h-full">
@@ -70,11 +68,11 @@ const StockdioForexWidget = () => {
           frameBorder="0"
           scrolling="no"
           width="100%"
-          height="350"
+          height="320"
           src="https://api.stockdio.com/visualization/financial/charts/v1/QuoteBoard?app-key=395DFC50D7D9415DA5A662933D57E22F&stockExchange=FOREX&symbols=EUR%2FUSD;GBP%2FUSD;USD%2FJPY;USD%2FCHF;AUD%2FUSD&includeCompany=false&includeChange=false&culture=Spanish-LatinAmerica&palette=Financial-Light&title=Watch%20List&borderColor=444444&backgroundColor=1a1a1a&captionColor=252525&titleColor=ffffff&labelsColor=cccccc&interlacedColor=252525&positiveColor=05ff05&negativeColor=ff0000&headerColor=cccccc&headerBackgroundColor=2d2d2d&onload=st_1c6c27217f7c478ca8d904cd86b5b94d"
           style={{
             border: "none",
-            minHeight: "350px",
+            minHeight: "320px",
             borderRadius: "8px",
           }}
           title="Cotizaciones de Forex en Tiempo Real"
@@ -83,16 +81,15 @@ const StockdioForexWidget = () => {
     );
   }
 
-  // En desarrollo, mostrar tabla simulada con datos de la imagen N°1
   return (
     <div className="w-full">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-600">
-              <th className="text-left pb-2 w-2/5 text-gray-300">DIVISA</th>
-              <th className="text-right pb-2 w-1/5 text-gray-300">VALOR</th>
-              <th className="text-right pb-2 w-1/5 text-gray-300">%</th>
+              <th className="text-left pb-1 w-2/5 text-gray-300">DIVISA</th>
+              <th className="text-right pb-1 w-1/5 text-gray-300">VALOR</th>
+              <th className="text-right pb-1 w-1/5 text-gray-300">%</th>
             </tr>
           </thead>
           <tbody>
@@ -101,7 +98,7 @@ const StockdioForexWidget = () => {
                 key={index}
                 className="border-b border-gray-700 hover:bg-gray-700/30 transition-colors"
               >
-                <td className="py-2 text-white font-medium">{item.symbol}</td>
+                <td className="py-1.5 text-white font-medium">{item.symbol}</td>
                 <td className="text-right font-mono text-white">
                   {item.price}
                 </td>
@@ -162,19 +159,18 @@ export function SectionCards() {
   };
 
   return (
-    <div className="container max-w-screen-xl flex flex-wrap justify-center gap-3 ">
-      {/* === CARD: PRECIOS === */}
-      <Card className="w-full flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2 ml-2">
+    <div className="container max-w-screen-xl flex flex-wrap justify-center gap-3">
+      <Card className="flex-1 min-w-[390px] max-w-[350px] bg-custom-colortwo text-white border-none p-3">
         <CardContent className="p-0">
-          <div className="font-bold text-white mb-2">PRECIOS</div>
+          <div className="font-bold text-white mb-2 text-sm">PRECIOS</div>
           <div className="w-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-600">
-                  <th className="text-left pb-2 w-auto"></th>
-                  <th className="text-right pb-2 w-auto">HOY</th>
-                  <th className="text-right pb-2 w-auto">AYER</th>
-                  <th className="text-right pb-2 w-auto">VAR%</th>
+                  <th className="text-left pb-1 w-auto"></th>
+                  <th className="text-right pb-1 w-auto">HOY</th>
+                  <th className="text-right pb-1 w-auto">AYER</th>
+                  <th className="text-right pb-1 w-auto">VAR%</th>
                 </tr>
               </thead>
               <tbody>
@@ -203,16 +199,16 @@ export function SectionCards() {
                   const varp = getVar(hoy, ayer);
                   return (
                     <tr key={label} className="border-b border-gray-600">
-                      <td className="py-3">{label}</td>
-                      <td className="text-right">{fmt2(hoy)}</td>
-                      <td className="text-right">{fmt2(ayer)}</td>
+                      <td className="py-2 text-sm">{label}</td>
+                      <td className="text-right text-sm">{fmt2(hoy)}</td>
+                      <td className="text-right text-sm">{fmt2(ayer)}</td>
                       <td
-                        className="text-right"
+                        className="text-right text-sm font-medium"
                         style={{
                           color: Number(varp) < 0 ? "#FF5252" : "#4CAF50",
                         }}
                       >
-                        {varp === "-" ? "-" : varp}
+                        {varp === "-" ? "-" : `${varp}%`}
                       </td>
                     </tr>
                   );
@@ -223,12 +219,11 @@ export function SectionCards() {
         </CardContent>
       </Card>
 
-      {/* === CARD: MONTOS USD === */}
-      <Card className="flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2 ml-2">
+      <Card className="flex-1 min-w-[390px] max-w-[350px] bg-custom-colortwo text-white border-none p-3">
         <CardContent className="p-0">
-          <div className="font-bold text-white mb-2">MONTOS USD:</div>
+          <div className="font-bold text-white mb-2 text-sm">MONTOS USD:</div>
           <div>
-            <table className="w-full text-sm min-w-[225px]">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-600">
                   <th className="text-left w-auto"></th>
@@ -245,8 +240,8 @@ export function SectionCards() {
                   { label: "TRANSACCIONES", hoy: montos?.count || "-" },
                 ].map(({ label, hoy }) => (
                   <tr key={label} className="border-b border-gray-600">
-                    <td className="py-3">{label}</td>
-                    <td className="text-center">{hoy}</td>
+                    <td className="py-2 text-sm">{label}</td>
+                    <td className="text-center text-sm">{hoy}</td>
                   </tr>
                 ))}
               </tbody>
@@ -255,20 +250,19 @@ export function SectionCards() {
         </CardContent>
       </Card>
 
-      {/* === CARD: TABLA HORARIA === */}
-      <Card className="w-full flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2 ml-2">
+      <Card className="flex-1 min-w-[390px] max-w-[350px] bg-custom-colortwo text-white border-none p-3">
         <CardContent className="p-0">
           <div>
-            <table className="w-full text-sm min-w-[230px] border-separate border-spacing-y-2 sm:border-spacing-y-1">
+            <table className="w-full text-sm">
               <thead>
                 <tr>
-                  <th className="text-center border-gray-600 border-b px-2 py-1">
+                  <th className="text-center border-gray-600 border-b px-2 py-1 text-sm">
                     HORA
                   </th>
-                  <th className="text-center border-gray-600 border-b px-2 py-1">
+                  <th className="text-center border-gray-600 border-b px-2 py-1 text-sm">
                     PROMEDIO
                   </th>
-                  <th className="text-center border-gray-600 border-b px-2 py-1">
+                  <th className="text-center border-gray-600 border-b px-2 py-1 text-sm">
                     CIERRE
                   </th>
                 </tr>
@@ -278,13 +272,13 @@ export function SectionCards() {
                   const row = dataByHour?.[hora] || {};
                   return (
                     <tr key={hora}>
-                      <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-2">
+                      <td className="text-center border-gray-600 border-b px-2 py-2 text-sm">
                         {hora}
                       </td>
-                      <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-2">
+                      <td className="text-center border-gray-600 border-b px-2 py-2 text-sm">
                         {row.avg || "-"}
                       </td>
-                      <td className="text-center border-gray-600 border-b px-2 py-6 sm:py-2">
+                      <td className="text-center border-gray-600 border-b px-2 py-2 text-sm">
                         {row.close || "-"}
                       </td>
                     </tr>
@@ -314,13 +308,13 @@ export function SectionCardsRight() {
   return (
     <div className="flex flex-wrap justify-center w-full">
       <div className="flex flex-wrap justify-center gap-3 w-full max-w-[1600px]">
-        <div className="flex-1 min-w-[240px] grow mr-2">
+        <div className="flex-1 min-w-[390px] max-w-[380px]">
           <GraficoInteractivo1 />
         </div>
 
-        <Card className="flex flex-col flex-1 min-w-[240px] bg-custom-colortwo text-white border-none p-2 mr-2">
-          <CardHeader className="p-0 mb-[-30px]">
-            <CardTitle className="text-lg font-semibold">
+        <Card className="flex flex-col flex-1 min-w-[390px] max-w-[350px] bg-custom-colortwo text-white border-none p-3">
+          <CardHeader className="p-0 mb-1">
+            <CardTitle className="text-base font-semibold">
               Últimas Transacciones
             </CardTitle>
           </CardHeader>
@@ -330,19 +324,19 @@ export function SectionCardsRight() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-600 text-gray-400">
-                    <th className="text-left pb-1">HORA</th>
-                    <th className="text-right pb-1">PRECIO</th>
-                    <th className="text-right pb-1">MONTO USD</th>
+                    <th className="text-left pb-1 text-sm">HORA</th>
+                    <th className="text-right pb-1 text-sm">PRECIO</th>
+                    <th className="text-right pb-1 text-sm">MONTO USD</th>
                   </tr>
                 </thead>
                 <tbody>
                   {ultimas7.map((operacion, index) => (
                     <tr key={index} className="border-b border-gray-700">
-                      <td className="py-2">{operacion.hora || "-"}</td>
-                      <td className="text-right">
+                      <td className="py-1.5 text-sm">{operacion.hora || "-"}</td>
+                      <td className="text-right text-sm">
                         {operacion.precio?.toFixed(2) || "-"}
                       </td>
-                      <td className="text-right">{operacion.monto || "-"}</td>
+                      <td className="text-right text-sm">{operacion.monto || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -350,10 +344,10 @@ export function SectionCardsRight() {
             </div>
           </CardContent>
         </Card>
-        {/* === CARD: MONEDAS EN TIEMPO REAL (CON FUNCIONALIDAD STOCKDIO) === */}
-        <Card className="flex-1 min-w-[280px] bg-custom-colortwo text-white border-none p-2 mr-2">
+
+        <Card className="flex-1 min-w-[390px] max-w-[350px] bg-custom-colortwo text-white border-none p-3">
           <CardContent className="p-0">
-            <div className="font-bold text-white mb-2">MONEDAS EN TIEMPO REAL</div>
+            <div className="font-bold text-white mb-2 text-sm">MONEDAS EN TIEMPO REAL</div>
             <StockdioForexWidget />
           </CardContent>
         </Card>
