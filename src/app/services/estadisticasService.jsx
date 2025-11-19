@@ -51,48 +51,57 @@ const API_URL =
 
 export const fetchEstadisticasAPI = async (sector, fecha, filtros = {}) => {
   try {
-    // 1) Obtener/renovar token
     let token = tokenServices.getToken();
 
-    // Heuristica minima: si no hay token o parece invalido, Lo pedimos
+    // Si no hay token o es inválido, renovarlo
     if (!token || token.length < 30) {
-      // Mover estas credenciales a variables de entorno en produccion
       token = await tokenServices.fetchToken("sysdev", "$MasterDev1972*");
     }
 
-    // 2) Construir payLoad
     const payload = {
       fecha,
       sector,
       ...filtros,
     };
 
-    "➡️ Enviando payload:", payload;
+    const makeRequest = async (tokenToUse) => {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${tokenToUse}`,
+        },
+        body: JSON.stringify(payload),
+      });
 
-    // 3) POST al endpoint
-    const response = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(payload),
-    });
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`API error ${response.status}: ${errText}`);
+      }
 
-    // 4) Validacion de respuesta
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`API error ${response.status}: ${errText}`);
+      const data = await response.json();
+      return data?.result || [];
+    };
+
+    // Primer intento con token actual
+    try {
+      return await makeRequest(token);
+    } catch (err) {
+      // Si es un error 401 o 403, intenta renovar y reintentar
+      if (err.message.includes("401") || err.message.includes("403")) {
+        console.warn("Token expirado. Renovando y reintentando...");
+        tokenServices.clearToken(); // Limpia el token antiguo
+        const newToken = await tokenServices.fetchToken("sysdev", "$MasterDev1972*");
+        return await makeRequest(newToken);
+      }
+      throw err;
     }
-
-    // 5) Parse de JSON y retorno defensivo
-    const data = await response.json();
-    return data?.result || [];
   } catch (error) {
     console.error("❌ Error al obtener estadísticas desde API:", error);
     return [];
   }
 };
+
 /**
  *  Deriva los **filtros disponibles** (mercados, monedas, plazos) a partir de los datos crudos
  *  devueltos por `fetchEstadisticasAPI` para un `sector` y `fecha` dados.
