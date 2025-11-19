@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import Navbar2 from "../components/Navbar2";
 import useIsMobile from "../hooks/useIsMobile";
-import { WebSocketDataProvider } from "../services/WebSocketDataProvider";
+
 
 export default function dashboardLayout({ children }) {
   const isMobile = useIsMobile();
@@ -18,7 +18,6 @@ export default function dashboardLayout({ children }) {
   }, [sidebarColapsado, isMobile]);
 
   return (
-    <WebSocketDataProvider>
       <div className="flex h-screen overflow-hidden bg-gradient-to-b from-[#20202c] to-[#1a1a26]">
         {/* Sidebar colapsable */}
         <Sidebar onCollapseChange={setSidebarColapsado} />
@@ -41,6 +40,5 @@ export default function dashboardLayout({ children }) {
           </main>
         </div>
       </div>
-    </WebSocketDataProvider>
   );
 }

@@ -10,7 +10,6 @@ export default function EpaycoButton({
   currency = "cop",
   country = "co",
   test = true,
-  buttonUrl = "/minilogo.png",
 }) {
   const [handler, setHandler] = useState(null);
 
@@ -27,7 +26,6 @@ export default function EpaycoButton({
         });
         setHandler(h);
         clearInterval(int);
-        console.log("[EpaycoButton] handler configurado");
       }
     }, 200);
     return () => clearInterval(int);
@@ -46,19 +44,62 @@ export default function EpaycoButton({
     });
   };
 
+  const isReady = Boolean(handler);
+
   return (
-    <button
-      onClick={openCheckout}
+    <div
       style={{
-        border: "1px solid #ddd",
-        padding: 0,
-        cursor: handler ? "pointer" : "not-allowed",
-        borderRadius: 8,
+        display: "flex",
+        justifyContent: "center",
+        width: "100%",
       }}
-      aria-label={name}
-      title={handler ? name : "Cargando…"}
     >
-    <h1>Suscribirme</h1>
-    </button>
+      <button
+        onClick={openCheckout}
+        disabled={!isReady}
+        style={{
+          // 🔵 Azul MUY denso y 100% opaco
+          backgroundColor: isReady ? "#002B6B" : "#4B5563",
+          backgroundImage: "none",
+          border: "1px solid #001633",
+          padding: "10px 28px",
+          cursor: isReady ? "pointer" : "not-allowed",
+          borderRadius: "10px",
+          color: "white",
+          fontSize: "15px",
+          fontWeight: 700,
+          fontFamily: "Arial, sans-serif",
+          textTransform: "uppercase",
+          letterSpacing: "1px",
+          transition:
+            "background-color 0.15s ease-out, transform 0.15s ease-out, box-shadow 0.15s ease-out",
+          opacity: 1,                   // ✅ sin transparencia
+          mixBlendMode: "normal",       // por si hay estilos raros globales
+          boxShadow: "0 4px 10px rgba(0, 0, 0, 0.7)",
+          minWidth: "150px",
+          textAlign: "center",
+        }}
+        onMouseEnter={(e) => {
+          if (isReady) {
+            e.currentTarget.style.backgroundColor = "#0040A3";
+            e.currentTarget.style.transform = "translateY(-1px)";
+            e.currentTarget.style.boxShadow =
+              "0 7px 18px rgba(0, 0, 0, 0.8)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (isReady) {
+            e.currentTarget.style.backgroundColor = "#002B6B";
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow =
+              "0 4px 10px rgba(0, 0, 0, 0.7)";
+          }
+        }}
+        aria-label={name}
+        title={isReady ? name : "Cargando…"}
+      >
+        {isReady ? "SUSCRIBIRME" : "Cargando..."}
+      </button>
+    </div>
   );
 }

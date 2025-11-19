@@ -118,9 +118,6 @@ const StockdioForexWidget = () => {
             ))}
           </tbody>
         </table>
-        <div className="text-xs text-gray-400 mt-2 text-center">
-          Datos de ejemplo - En producción se mostrarán datos en tiempo real de Stockdio
-        </div>
       </div>
     </div>
   );
