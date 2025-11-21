@@ -12,6 +12,7 @@ import { useWebSocketData } from "../../services/WebSocketDataProvider";
 import { WebSocketDataGraficosProvider } from "../../services/WebSocketDataProviderGraficos";
 import { useChannel } from "@/app/services/ChannelService";
 import { useMarketFilter } from "@/app/services/MarketFilterService";
+import { useAuthGuard } from "@/app/services/useAuthGuard";
 
 import React, {useEffect, useState} from "react";
 
@@ -22,6 +23,8 @@ export default function nextdayPage() {
     const { setChannel } = useChannel();
     const { setMarket } = useMarketFilter();
     const [range, setRange] = useState("1D");
+
+    useAuthGuard();
 
     useEffect(() => {
         setChannel("dolar");

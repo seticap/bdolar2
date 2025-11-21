@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { tokenServices, webSocketServices } from "./socketService";
 import { useChannel } from "./ChannelService";
 import { useMarketFilter, matchesMarket } from "./MarketFilterService";
@@ -108,13 +108,27 @@ export const WebSocketDataProvider = ({ children }) => {
         webSocketServices.addListener(listener);
 
         const start = async () => {
-            const username = "sysdev";
-            const password = "$MasterDev1972*";
+            try {
+                let token = tokenServices.getToken();
 
-            localStorage.removeItem("auth-token");
-            const token = await tokenServices.fetchToken(username, password);
+                if (!token) {
+                    if (channel === "delay") {
+                        const username = "sysdev";
+                        const password = "$MasterDev1972*"
 
-            await webSocketServices.connect(token, channel);
+                        token = await tokenServices.fetchToken(username, password);
+                    } else {
+                        console.warn(
+                            "[WS] No hay token de usuario para canal protegido:",
+                            channel
+                        );
+                        return;
+                    }
+                }
+                await webSocketServices.connect(token, channel);
+            } catch (err) {
+                console.error("[WS] Error al conectar:", err);
+            }
         };
 
         start();
